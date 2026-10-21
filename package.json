@@ -1,0 +1,35 @@
+{
+  "name": "cue-desktop",
+  "version": "1.30.0",
+  "private": true,
+  "type": "module",
+  "description": "A personal desktop assistant with local AI, reviewed context and optional presentation sharing.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "npm run build && electron .",
+    "test": "node --test test/*.test.mjs",
+    "build": "npm run build:account && npm run build:device",
+    "build:account": "node build-account.mjs",
+    "build:device": "node build-device.mjs",
+    "build:native": "node build-native.mjs",
+    "build:launcher": "node build-launcher.mjs",
+    "package": "npm run build && node package-share.mjs",
+    "package:share": "npm run package",
+    "audit:public": "python3 scripts/audit-public.py"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@huggingface/transformers": "4.3.1",
+    "@mlc-ai/web-llm": "0.2.86",
+    "electron": "^44.5.1",
+    "fflate": "0.8.3",
+    "jose": "6.1.3",
+    "pdfjs-dist": "6.4.299",
+    "vite": "6.4.4"
+  },
+  "main": "desktop.cjs",
+  "license": "MIT"
+}

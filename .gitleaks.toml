@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+# Transformers' generated tokenizer assigns a vocabulary object to a JS field.
+# This exact code expression is not an API credential. No files are excluded.
+[[allowlists]]
+description = "Minified tokenizer vocabulary assignment"
+regexTarget = "secret"
+regexes = ['''^this\.vocab=[A-Za-z_$][A-Za-z0-9_$]{0,2}$''']

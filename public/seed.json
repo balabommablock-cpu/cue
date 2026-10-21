@@ -1,0 +1,16 @@
+{
+  "firstRunSetup": true,
+  "defaultProvider": "device",
+  "defaultDeviceModel": "balanced",
+  "profile": "",
+  "questions": [
+    "Tell me about yourself.",
+    "Tell me about a difficult decision.",
+    "How would you decide which feature to build first?"
+  ],
+  "demo": {
+    "question": "How would you decide which feature to build first?",
+    "answer": "Start with the customer problem that matters most. Compare expected impact, evidence and effort, then test the biggest uncertainty before committing.",
+    "cues": "Start with the customer problem that matters most.\n• Impact: Who benefits, and how much?\n• Evidence: What shows the problem is real?\n• Effort: Smallest useful version.\n• Test: Resolve the riskiest assumption first."
+  }
+}

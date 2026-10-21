@@ -1,0 +1,316 @@
+{
+  "reviewed": "2026-10-01",
+  "scope": "Research coverage, not certification, a market-share ranking, or an exhaustive list of all providers. No vendor has been tested end to end with this build.",
+  "platforms": [
+    {
+      "id": "meet",
+      "name": "Google Meet",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Choose Window → Cue Share View when window sharing is permitted. Entire-screen sharing is a separate capture path and can show Cue.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.google.com/meet/answer/9308856"
+      ]
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Select the Cue Share View window, then check a second participant's picture. Zoom capture modes differ; a result for one mode does not certify the others.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063824"
+      ]
+    },
+    {
+      "id": "teams",
+      "name": "Microsoft Teams",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Choose the specific Cue Share View window. Teams documents screen and window sharing, including the native macOS picker. Organisation policy can limit sharing.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.microsoft.com/en-us/teams/meetings/present-content-in-microsoft-teams-meetings"
+      ]
+    },
+    {
+      "id": "outlook",
+      "name": "Outlook meeting invitations",
+      "category": "Calendar entry point",
+      "route": "provider",
+      "guidance": "Check the meeting link's provider and use its guidance. Outlook schedules online meetings; it is not one independent screen-capture implementation.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.microsoft.com/en-us/outlook/make-every-meeting-online"
+      ]
+    },
+    {
+      "id": "webex",
+      "name": "Cisco Webex",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Select the individual Cue Share View window. Check whether your client is sharing one window, all windows of an application, or the whole desktop.",
+      "verification": "not tested",
+      "sources": [
+        "https://help.webex.com/article/5ddww5"
+      ]
+    },
+    {
+      "id": "slack",
+      "name": "Slack Huddles",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Choose the Cue Share View window in the sharing picker. Check the recipient view; do not treat a full-screen share as the same mode.",
+      "verification": "not tested",
+      "sources": [
+        "https://slack.com/help/articles/4402059015315-Use-huddles-in-Slack"
+      ]
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Go Live supports an application window or a whole screen. Select Cue Share View as the window and verify the recipient view.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.discord.com/hc/en-us/articles/360040816151-Go-Live-and-Screen-Share"
+      ]
+    },
+    {
+      "id": "lark",
+      "name": "Lark Meetings",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Choose the Cue Share View window. Lark documents both desktop and window sharing; minimising a shared window can pause its presentation.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.larksuite.com/hc/zh-CN/articles/360046058494-%E4%BD%BF%E7%94%A8%E5%85%B1%E4%BA%AB%E5%B1%8F%E5%B9%95%E5%8A%9F%E8%83%BD"
+      ]
+    },
+    {
+      "id": "whereby",
+      "name": "Whereby",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Choose Application Window → Cue Share View. Share View carries video only; microphone and any shared computer audio have separate controls.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.whereby.com/en/articles/4507586"
+      ]
+    },
+    {
+      "id": "jitsi",
+      "name": "Jitsi Meet",
+      "category": "Meetings",
+      "route": "task_specific",
+      "guidance": "Screen sharing exists, but Jitsi deployments can configure capture and recording. Inspect the actual browser picker; use Share View only if a window is accepted.",
+      "verification": "not tested",
+      "sources": [
+        "https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-configuration/"
+      ]
+    },
+    {
+      "id": "facetime",
+      "name": "FaceTime on Mac",
+      "category": "Meetings",
+      "route": "window",
+      "guidance": "Use Share This Window on Cue Share View. Apple separately offers the entire screen and all application windows; verify which one is active.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.apple.com/guide/facetime/share-your-screen-fctmdcf2007a/mac"
+      ]
+    },
+    {
+      "id": "goto",
+      "name": "GoTo Meeting",
+      "category": "Meetings",
+      "route": "task_specific",
+      "guidance": "Screen sharing is documented, but this client's precise capture mode has not been verified. Inspect its current picker before attempting Share View.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.goto.com/meeting/features"
+      ]
+    },
+    {
+      "id": "mercor",
+      "name": "Mercor AI interviews / tasks",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Requirements vary by role and task. Do not assume that a conversational interview and a screen-sharing task use the same setup. Share View requires an accepted window source.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.mercor.com/blog/monty-engineering-deep-dive/",
+        "https://work.mercor.com/jobs/list_AAABl9CWNXxaTEHNfwBMzo6T/sales-engineers"
+      ]
+    },
+    {
+      "id": "hirevue",
+      "name": "HireVue",
+      "category": "Interviews",
+      "route": "provider",
+      "guidance": "HireVue offers on-demand and live interviews; some live sessions use Zoom, Teams or Webex. Confirm the actual provider and any separate screen-recording requirement.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.hirevue.com/solutions/video-interviewing"
+      ]
+    },
+    {
+      "id": "coderpad",
+      "name": "CoderPad Interview",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "The shared editor and embedded video are separate from desktop capture. Editor actions may be recorded regardless of what a screen-share picture contains. Exact window-picker support remains unverified.",
+      "verification": "not tested",
+      "sources": [
+        "https://coderpad.io/faqs/"
+      ]
+    },
+    {
+      "id": "hackerrank",
+      "name": "HackerRank browser Interview",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Browser interviews can include integrated calls and sharing. Check the organisation's interview configuration. Desktop App Mode has additional restrictions and is listed separately.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.hackerrank.com/articles/6271433412-audio-and-video-calls-in-interviews-powered-by-zoom"
+      ]
+    },
+    {
+      "id": "chakra",
+      "name": "HackerRank Chakra Desktop App Mode",
+      "category": "Restricted assessments",
+      "route": "restricted",
+      "guidance": "Unsupported with Share View under the documented restrictions: other applications and recording/sharing tools are blocked. Cue does not bypass those controls.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.hackerrank.com/articles/8673621955"
+      ]
+    },
+    {
+      "id": "hackerearth",
+      "name": "HackerEarth SmartBrowser",
+      "category": "Restricted assessments",
+      "route": "restricted",
+      "guidance": "Unsupported with Share View under the documented restrictions. SmartBrowser checks running applications and automatically captures the full screen; it does not ask you to choose a window.",
+      "verification": "not tested",
+      "sources": [
+        "https://help.hackerearth.com/smartbrowser-help-guide-for-candidates"
+      ]
+    },
+    {
+      "id": "codesignal",
+      "name": "CodeSignal certified / proctored assessments",
+      "category": "Restricted assessments",
+      "route": "entire_screen",
+      "guidance": "The documented assessment setup requires the entire screen. Selecting Share View would not satisfy that requirement, and independent full-screen capture can show Cue.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.codesignal.com/hc/en-us/articles/360039873754-I-can-t-share-my-screen-What-do-I-do",
+        "https://support.codesignal.com/hc/en-us/articles/360039872174-What-is-proctoring-and-how-does-it-work"
+      ]
+    },
+    {
+      "id": "sparkhire",
+      "name": "Spark Hire",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Live and one-way video interviews are different modes. The product page does not establish screen-capture behaviour or Cue compatibility. Verify the exact interview setup.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.sparkhire.com/video-interviews/"
+      ]
+    },
+    {
+      "id": "willo",
+      "name": "Willo",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Recorded video responses do not by themselves establish what other monitoring is enabled. Capture requirements and permitted assistance must be checked for the specific interview.",
+      "verification": "not tested",
+      "sources": [
+        "https://www.willo.video/blog/pre-recorded-video-interview-questions"
+      ]
+    },
+    {
+      "id": "vidcruiter",
+      "name": "VidCruiter",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Supports live and pre-recorded video interviews. Exact capture sources and organisation settings have not been verified; there is no platform-wide invisibility result.",
+      "verification": "not tested",
+      "sources": [
+        "https://vidcruiter.com/video-interviewing/"
+      ]
+    },
+    {
+      "id": "interviewstream",
+      "name": "interviewstream",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "On-demand interviews record responses to preset questions. That does not establish desktop-capture support or its absence. Check the actual interview configuration.",
+      "verification": "not tested",
+      "sources": [
+        "https://interviewstream.com/interview-on-demand/"
+      ]
+    },
+    {
+      "id": "karat",
+      "name": "Karat",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Karat documents live technical assessment with an Interview Engineer and IDE. Exact screen-capture behaviour is unverified; shared code and recorded conversation are separate data channels.",
+      "verification": "not tested",
+      "sources": [
+        "https://karat.com/candidate-experience/"
+      ]
+    },
+    {
+      "id": "imocha",
+      "name": "iMocha Live Interview",
+      "category": "Interviews",
+      "route": "task_specific",
+      "guidance": "Configurable window-violation monitoring can report leaving the interview window. Excluding Cue from a picture does not remove those events. Confirm the permitted setup.",
+      "verification": "not tested",
+      "sources": [
+        "https://help.imocha.io/kb/article/176/what-are-the-various-proctoring-techniques-provided-for-the-live-interview"
+      ]
+    },
+    {
+      "id": "mettl",
+      "name": "Mercer Mettl Secure Exam Browser",
+      "category": "Restricted assessments",
+      "route": "restricted",
+      "guidance": "The secure browser restricts applications. Share View is unsupported unless the assessment operator explicitly permits the required apps and a window-sharing workflow.",
+      "verification": "not tested",
+      "sources": [
+        "https://mettl.com/en/safe-and-secure-exam-browser/"
+      ]
+    },
+    {
+      "id": "talview",
+      "name": "Talview Secure Browser",
+      "category": "Restricted assessments",
+      "route": "restricted",
+      "guidance": "The documented secure mode prevents access to other tabs and applications. Share View is not a solution for that mode and does not change its restrictions.",
+      "verification": "not tested",
+      "sources": [
+        "https://certification.talview.com/support/solutions/articles/11000130852-steps-to-download-and-use-the-secure-browser"
+      ]
+    },
+    {
+      "id": "testgorilla",
+      "name": "TestGorilla assessments",
+      "category": "Assessments",
+      "route": "task_specific",
+      "guidance": "TestGorilla documents signals including fullscreen exits, tab switching, webcam status and paste activity. Screen exclusion does not conceal these separate signals; check assessment rules.",
+      "verification": "not tested",
+      "sources": [
+        "https://support.testgorilla.com/hc/en-us/articles/9028797639451-Understanding-anti-cheating-measures"
+      ]
+    }
+  ]
+}
