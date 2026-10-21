@@ -8,6 +8,6 @@ export async function signDesktop(app){
   const frameworks=join(app,'Contents','Frameworks');
   for(const name of await readdir(frameworks))if(/\.(framework|app|dylib)$/.test(name))
     execFileSync('codesign',['--force','--deep','--sign','-',join(frameworks,name)],{stdio:'pipe'});
-  execFileSync('codesign',['--force','--sign','-','--identifier','io.github.cue.community',app],{stdio:'pipe'});
+  execFileSync('codesign',['--force','--sign','-','--identifier','com.boredfolio.cue',app],{stdio:'pipe'});
   execFileSync('codesign',['--verify','--deep','--strict',app],{stdio:'pipe'});
 }

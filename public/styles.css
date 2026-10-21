@@ -61,3 +61,7 @@
 .chatgpt-connect[data-connected="true"]{background:transparent;color:#b9c8be;border-color:transparent;padding:6px 0;font-size:12px;font-weight:400}
 
 .preset-actions{display:flex;flex-wrap:wrap;gap:8px;margin-block:12px}.setting h2{font-size:18px;margin-block:20px 12px}.preset-actions button{min-height:36px}.setting p{overflow-wrap:anywhere}
+
+#setupAPI h2{font-size:20px;margin:0 0 10px}#setupAPI>.primary{margin-top:18px}#setupAPI input{max-width:100%}#apiProviderTitle,#apiKeyStatus{overflow-wrap:anywhere}
+
+.ai-picker{border:1px solid #b9d2c130;border-radius:12px;padding:12px 14px;margin:18px 0}.ai-picker>summary{cursor:pointer;font-size:14px;font-weight:550;color:#d8eadf}.ai-picker .ai-choices{margin-bottom:0}.api-workspace{margin-top:16px;font-size:13px;color:#b8cbbb}.api-workspace>summary{cursor:pointer}#setupAPI .setup-tools{align-items:center}#apiModelWrap>.primary{margin-top:18px}

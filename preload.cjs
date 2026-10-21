@@ -1,5 +1,14 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('cueDesktop',{
+  apiConsole:provider=>ipcRenderer.invoke('cue:api-console',provider),
+  apiStatus:()=>ipcRenderer.invoke('cue:api-status'),
+  apiConnect:data=>ipcRenderer.invoke('cue:api-connect',data),
+  apiCancelConnect:provider=>ipcRenderer.invoke('cue:api-cancel-connect',provider),
+  apiDisconnect:provider=>ipcRenderer.invoke('cue:api-disconnect',provider),
+  apiModels:provider=>ipcRenderer.invoke('cue:api-models',provider),
+  apiAnswer:data=>ipcRenderer.invoke('cue:api-answer',data),
+  apiInterrupt:id=>ipcRenderer.invoke('cue:api-interrupt',id),
+  onApiAnswer:callback=>{const fn=(_e,event)=>callback(event);ipcRenderer.on('cue:api-answer-event',fn);return ()=>ipcRenderer.removeListener('cue:api-answer-event',fn);},
   deviceInfo:()=>ipcRenderer.invoke('cue:device-info'),
   accountStatus:()=>ipcRenderer.invoke('cue:account-status'),
   accountSignIn:options=>ipcRenderer.invoke('cue:account-signin',options),

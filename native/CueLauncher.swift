@@ -10,7 +10,7 @@ final class Launcher: NSObject {
     var launching = false
     var statusItem: NSStatusItem?
     func recordPhase(_ phase: String) {
-        let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Cue Community Launcher")
+        let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CueLauncher")
         let state: [String: Any] = ["phase": phase, "at": ISO8601DateFormatter().string(from: Date()), "shortcut": "hold right Option", "holdSeconds": 0.45]
         if let data = try? JSONSerialization.data(withJSONObject: state, options: [.prettyPrinted]) { try? data.write(to: folder.appendingPathComponent("launcher-state.json"), options: .atomic) }
     }
@@ -44,9 +44,11 @@ final class Launcher: NSObject {
         configuration.activates = true
         configuration.createsNewApplicationInstance = true
         configuration.arguments = ["--start-listening"]
-        guard let cueURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "io.github.cue.community") else {
+        let installed = URL(fileURLWithPath: "/Applications/Cue.app")
+        let preferred = Bundle(url: installed)?.bundleIdentifier == "com.boredfolio.cue" ? installed : NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.boredfolio.cue")
+        guard let cueURL = preferred else {
             launching = false
-            recordPhase("community-app-not-found")
+            recordPhase("cue-app-not-found")
             return
         }
         NSWorkspace.shared.openApplication(at: cueURL, configuration: configuration) { _, error in

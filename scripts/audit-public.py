@@ -41,8 +41,8 @@ if seed.get("profile") != "" or seed.get("firstRunSetup") is not True:
     errors.append("The first-run profile is not empty.")
 if background.get("sources") or background.get("records") or background.get("applicationFields") or background.get("applicationSections"):
     errors.append("Bundled background contains user data.")
-if "'Cue Community'" not in (root / "desktop.cjs").read_text():
-    errors.append("Community data storage is not isolated.")
+if "desktop-data.cjs" not in (root / "desktop.cjs").read_text():
+    errors.append("The explicit Cue data selection helper is missing.")
 if errors:
     print("Public source audit failed:\n" + "\n".join(errors), file=sys.stderr)
     sys.exit(1)

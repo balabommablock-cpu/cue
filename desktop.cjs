@@ -8,7 +8,7 @@ const {createStartController}=require('./desktop-start.cjs');
 const captureLog=[];
 function captureDiagnostic(item){captureLog.push({at:new Date().toISOString(),...item});if(captureLog.length>30)captureLog.shift();try{fs.writeFileSync(path.join(app.getPath('userData'),'capture-diagnostics.json'),JSON.stringify(captureLog));}catch{}}
 app.setName('Cue');
-app.setPath('userData',path.join(app.getPath('appData'),'Cue Community'));
+app.setPath('userData',require('./desktop-data.cjs').dataDirectory(app.getPath('appData'),fs.existsSync));
 
 // An explicit separate profile lets QA test the distributed first-run flow
 // without touching the owner's saved context, cache or credentials.
@@ -29,7 +29,7 @@ function diagnostic(phase,error){
   }catch{}
 }
 process.on('uncaughtExceptionMonitor',error=>diagnostic('uncaught-exception',error));
-let win,server,origin,shareView,accountBridge,disposeInterrupts,disposeRecovery,quitting=false,shareChoosing=false,captureError='',protectedCapture=true;
+let win,server,origin,shareView,accountBridge,apiBridge,disposeInterrupts,disposeRecovery,quitting=false,shareChoosing=false,captureError='',protectedCapture=true;
 const startController=createStartController({show:()=>{if(!quitting&&win&&!win.isDestroyed()){win.show();win.focus();}},send:action=>{if(!quitting&&win&&!win.isDestroyed())win.webContents.send('cue:action',action);}});
 if(process.argv.includes('--start-listening')){diagnostic('shortcut-cold-start');startController.request();}
 const shutdown=createShutdown([
@@ -39,6 +39,7 @@ const shutdown=createShutdown([
   ['shortcuts',()=>globalShortcut.unregisterAll()],
   ['share-view',()=>shareView?.stop()],
   ['chatgpt',()=>accountBridge?.close()],
+  ['api-providers',()=>apiBridge?.close()],
   ['providers',()=>server?.disposeLocal?.()],
   ['server-connections',()=>server?.closeAllConnections()],
   ['server-listener',()=>server?.close()],
@@ -83,6 +84,7 @@ else {
     const bounds=screen.getPrimaryDisplay().workArea;
     win=new BrowserWindow({title:'Cue',...windowBounds(bounds),transparent:true,backgroundColor:'#00000000',frame:false,roundedCorners:true,hasShadow:true,alwaysOnTop:true,show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
     win.once('close',shutdown);
+    apiBridge=require('./api-desktop.cjs').installApiProviders({app,win,ipcMain,safeStorage,shell,origin});
     accountBridge=require('./chatgpt-desktop.cjs').installChatGPT({app,win,ipcMain,safeStorage,shell,origin});
     win.setAlwaysOnTop(true,'floating');win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
     // This is a best-effort OS request. Modern macOS ScreenCaptureKit clients

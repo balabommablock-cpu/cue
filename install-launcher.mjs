@@ -3,12 +3,12 @@ import {execFileSync} from 'node:child_process';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
 if(process.platform!=='darwin')throw new Error('Cue Launcher requires macOS.');
-const label='io.github.cue.community.launcher',domain=`gui/${process.getuid()}`;
-const directory=join(homedir(),'Library','Application Support','Cue Community Launcher'),agents=join(homedir(),'Library','LaunchAgents');
+const label='com.boredfolio.cue.launcher',domain=`gui/${process.getuid()}`;
+const directory=join(homedir(),'Library','Application Support','CueLauncher'),agents=join(homedir(),'Library','LaunchAgents');
 const source=process.argv[2]||'/Applications/Cue.app';
 const identity=execFileSync('/usr/libexec/PlistBuddy',['-c','Print :CFBundleIdentifier',join(source,'Contents','Info.plist')],{encoding:'utf8'}).trim();
-if(identity!=='io.github.cue.community')throw new Error('Choose an installed Cue Community app; another Cue edition cannot be used.');
-const launcher=join(directory,'Cue Launcher.app'),binary=join(launcher,'Contents','MacOS','Cue Community Launcher'),plist=join(agents,label+'.plist');
+if(identity!=='com.boredfolio.cue')throw new Error('Choose the installed Cue app.');
+const launcher=join(directory,'Cue Launcher.app'),binary=join(launcher,'Contents','MacOS','CueLauncher'),plist=join(agents,label+'.plist');
 const escape=s=>s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 await mkdir(directory,{recursive:true});await mkdir(agents,{recursive:true});
 try{execFileSync('launchctl',['bootout',domain+'/'+label],{stdio:'pipe'});}catch{}

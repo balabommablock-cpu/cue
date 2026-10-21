@@ -13,7 +13,7 @@ import {answerOptions} from './public/model-options.js';
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
-  ...['preferences-ui.js','setup-ui.js','account-ui.js','story-core.js','coach-ui.js','story-ui.js','voice-notes.js','background-ui.js','model-options.js','progress-ui.js','question-joiner.js'].map(name=>['/'+name,[name,'text/javascript; charset=utf-8']]),
+  ...['api-setup-ui.js','api-ui.js','preferences-ui.js','setup-ui.js','account-ui.js','story-core.js','coach-ui.js','story-ui.js','voice-notes.js','background-ui.js','model-options.js','progress-ui.js','question-joiner.js'].map(name=>['/'+name,[name,'text/javascript; charset=utf-8']]),
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/core.js', ['core.js', 'text/javascript; charset=utf-8']],
   ['/audio-capture.js', ['audio-capture.js', 'text/javascript; charset=utf-8']],

@@ -2,7 +2,7 @@
 
 The main components are an Electron main process (`desktop.cjs`), a local HTTP service (`server.mjs`), browser UI in `public/`, local model workers in `device-src/`, and macOS sharing/shortcut helpers in `native/`.
 
-The main process owns OAuth tokens and native permissions. It validates the sender before handling IPC. The renderer handles the conversation and reading UI; it receives no account token. Local workers use bounded context retrieval. Model files and user context are not committed.
+The main process owns OAuth tokens, encrypted API keys and native permissions. It validates the sender before handling IPC. The renderer handles the conversation and reading UI; it receives no account token. Local workers use bounded context retrieval. Model files and user context are not committed.
 
 ## Customization
 
@@ -11,6 +11,12 @@ Use Display for the built-in reading presets and portable preference files. The 
 UI styles are in `public/styles.css`. General answer instructions are in `device-src/context.mjs`; legacy Codex/Realtime prompts are in `prompt.mjs` and `answer-context.mjs`. Keep factual evidence separate from style instructions. Do not teach the model that generated drafts establish personal facts.
 
 Local model choices are defined in `device-src/models.js`. Adding a model requires checking memory use, license, context window and an actual accuracy/latency evaluation on the target Mac. Do not replace the default with a model that only passes a synthetic happy-path test.
+
+## Cloud providers
+
+The api-providers module owns encrypted key storage, account model discovery, fixed provider endpoints and streaming. The api-desktop module validates the IPC sender; api-setup-ui handles connection UI. No secret is sent back to the renderer. API-model IDs are not restricted to a baked-in list; unsupported model types still require a clear provider error.
+
+The desktop-data helper retains the established Cue data directory and supports an early Community-only folder without overwriting either. Fresh packages contain no user data.
 
 ## Launcher
 

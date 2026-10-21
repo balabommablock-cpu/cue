@@ -1,3 +1,4 @@
+import {apiResponse} from './api-ui.js';
 import {preferencesUI} from './preferences-ui.js';
 import {setupUI} from './setup-ui.js';
 import {unwrap,accountResponse} from './account-ui.js';
@@ -21,7 +22,9 @@ import {ANSWER_MODELS,DEFAULT_ANSWER_MODEL,DEFAULT_ANSWER_SPEED,answerOptions} f
 const $=id=>document.getElementById(id);
 const native=window.cueDesktop;
 let deviceRuntime,deviceModule,deviceLoading=null,personalSetup;
-const usesText=()=>['codex','device','chatgpt'].includes(settings.provider);
+const apiProvider=()=>['openai','anthropic'].includes(settings.provider);
+const providerName=()=>({device:'local AI',chatgpt:'ChatGPT',openai:'OpenAI',anthropic:'Claude',codex:'Codex'})[settings.provider]||'AI';
+const usesText=()=>['codex','device','chatgpt','openai','anthropic'].includes(settings.provider);
 function deviceProgress(p){
   personalSetup?.progress(p);
   const text=p.text||(p.kind==='speech'?`Listening model: ${p.file||p.status||'loading'}${p.progress===undefined?'':' · '+Math.round(p.progress)+'%'}`:'Preparing local AI…');
@@ -35,7 +38,7 @@ async function localDevice(){
 async function prepareDevice(signal,audio=true){
   const runtime=await localDevice();await runtime.prepare({model:settings.deviceModel,audio},signal);write('devicePrepared',true);return runtime;
 }
-const transcribeSpeech=async(pcm,signal,options)=>['device','chatgpt'].includes(settings.provider)?(await localDevice()).transcribe(pcm,signal):transcribeRequest(pcm,signal,options);
+const transcribeSpeech=async(pcm,signal,options)=>['device','chatgpt','openai','anthropic'].includes(settings.provider)?(await localDevice()).transcribe(pcm,signal):transcribeRequest(pcm,signal,options);
 
 const flow=new ProgressView({$,onChange:()=>refreshView()});
 if(!native){document.body.classList.add('browser');$('pinButton').hidden=true;$('closeButton').hidden=true;}
@@ -123,13 +126,18 @@ function providerUI(){
   $('apiSettings').hidden=provider!=='realtime';$('codexSettings').hidden=!codex;$('deviceSettings').hidden=!device;
   $('sampleButton').hidden=provider==='realtime';$('sampleHelp').hidden=provider==='realtime';
   const model=ANSWER_MODELS.find(m=>m.id===$('answerModel').value)?.label.replace(' · recommended','')||'the selected model';
-  $('providerHelp').textContent=provider==='chatgpt'?'Using your ChatGPT plan. Connect or switch accounts in Your AI. Speech stays on this Mac; questions and relevant context go to OpenAI.':device?'Qwen3 answers and Whisper transcribes on this Mac. No API key, Codex account or cloud fallback. First setup downloads about 1–5 GB depending on your model. Small local models are less capable than leading cloud models.':codex?`Uses your Codex login and plan limits. Speech stays local; relevant context and questions go to ${model}.`:'Realtime sends selected audio to OpenAI and needs an API key with credit.';
+  $('providerHelp').textContent=['openai','anthropic'].includes(provider)?'Using your own '+(provider==='openai'?'OpenAI':'Claude')+' API key and selected text model. Manage it in Your AI. Speech is transcribed on this Mac.':provider==='chatgpt'?'Using your ChatGPT plan. Connect or switch accounts in Your AI. Speech stays on this Mac; questions and relevant context go to OpenAI.':device?'Qwen3 answers and Whisper transcribes on this Mac. No API key, Codex account or cloud fallback. First setup downloads about 1–5 GB depending on your model. Small local models are less capable than leading cloud models.':codex?`Uses your Codex login and plan limits. Speech stays local; relevant context and questions go to ${model}.`:'Realtime sends selected audio to OpenAI and needs an API key with credit.';
   $('speedHelp').textContent=$('answerSpeed').value==='priority'?'Fast requests priority processing and consumes more Codex allowance.':'Standard uses regular Codex processing.';
 }
 
 function notice(message=''){$('notice').textContent=message;$('notice').hidden=!message;}
 function status(text,kind=''){$('statusText').textContent=text;$('status').className='status '+kind;}
 async function request(path,data,method='POST',signal){
+  if(apiProvider()){
+    if(path==='/api/codex/check'){await personalSetup.readyApiModel(settings.provider);if(data.audio)await(await localDevice()).prepareSpeech(signal);return {sessionId:settings.provider+'-'+Date.now(),localAudioAvailable:true};}
+    if(path==='/api/codex/stop'||path==='/api/answer/interrupt'){await native?.apiInterrupt();return {interrupted:true};}
+    if(path.startsWith('/api/coach/'))throw new Error('AI coaching and story extraction currently require Codex. Your CV and manual stories work with this AI.');
+  }
   if(settings.provider==='chatgpt'){
     if(path==='/api/codex/check'){await personalSetup.readyModel();if(data.audio)await(await localDevice()).prepareSpeech(signal);return {sessionId:'chatgpt-'+Date.now(),localAudioAvailable:true};}
     if(path==='/api/codex/stop'||path==='/api/answer/interrupt'){await native?.accountInterrupt();return {interrupted:true};}
@@ -426,7 +434,7 @@ async function localAnswer(input){
   const slow=setTimeout(()=>{if(mine===generation&&localBusy&&!job.superseded)notice('Still working on this question. Your current answer stays available.');},12000);
   try{
     const data=scoped({...input,requestId:job.id,autoDetect,profile:effectiveProfile(),style:settings.style,answerModel:settings.answerModel,answerSpeed:settings.answerSpeed,history:localHistory});
-    const r=settings.provider==='chatgpt'?await chatGPTAnswer(data,controller.signal):settings.provider==='device'?(await localDevice()).answerResponse({...data,knowledge:background},controller.signal):await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json','X-Cue-Client':'1'},body:JSON.stringify(data),signal:controller.signal});
+    const r=apiProvider()?await cloudApiAnswer(data,controller.signal):settings.provider==='chatgpt'?await chatGPTAnswer(data,controller.signal):settings.provider==='device'?(await localDevice()).answerResponse({...data,knowledge:background},controller.signal):await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json','X-Cue-Client':'1'},body:JSON.stringify(data),signal:controller.signal});
     if(!r.ok)throw new Error((await r.json()).error||'The answer request failed. Retry the question.');
     await consumeAnswer(r,e=>{
       accept();if(job.superseded)return;
@@ -461,7 +469,7 @@ async function localAnswer(input){
       localHistory.push({question:q,answer:draft.slice(0,6000)});localHistory=localHistory.slice(-6);
       if(turnDecision(draft)==='wait'){job.restore();$('heardLine').textContent='Heard: '+q+' · No new question';}
     }
-    if(mine===generation){status(paused?'Paused':readyAnswer?'Next answer ready':settings.source==='text'?(settings.provider==='device'?'Local AI ready':settings.provider==='chatgpt'?'ChatGPT ready':'Codex ready'):(settings.provider==='device'?'Listening · local AI':settings.provider==='chatgpt'?'Listening · ChatGPT':'Listening · Codex'),'live');flow.set(paused?'paused':readyAnswer?'hold':turnDecision(draft)==='answer'?'ready':'listen',turnDecision(draft)==='wait'?'No new question':$('latency').textContent);}
+    if(mine===generation){status(paused?'Paused':readyAnswer?'Next answer ready':settings.source==='text'?(providerName()+' ready'):('Listening · '+providerName()),'live');flow.set(paused?'paused':readyAnswer?'hold':turnDecision(draft)==='answer'?'ready':'listen',turnDecision(draft)==='wait'?'No new question':$('latency').textContent);}
   }catch(e){
     if(mine===generation&&!job.superseded&&(e.name!=='AbortError'||timedOut)){
       job.restore();
@@ -478,11 +486,12 @@ async function localAnswer(input){
   }
 }
 async function connectLocal(mine){
+  if(apiProvider()&&!personalSetup.apiReady(settings.provider)){stop('Connect your AI first');await personalSetup.open('ai');return;}
   if(settings.provider==='chatgpt'&&!personalSetup.accountReady()){stop('Connect ChatGPT first');await personalSetup.open('ai');return;}
   if(settings.provider==='device'&&(!deviceRuntime?.status().answer||deviceRuntime?.status().model!==settings.deviceModel||settings.source!=='text'&&!deviceRuntime?.status().speech)){
     stop('Local AI setup needed');await personalSetup.open('ai');return;
   }
-  clearInterval(demoTimer);notice('');status(settings.provider==='device'?'Loading local AI…':settings.provider==='chatgpt'?'Connecting ChatGPT…':'Warming speech and Codex…');flow.set('start',settings.source==='text'?'Connecting your answer model':'Getting audio and your answer model ready');
+  clearInterval(demoTimer);notice('');status(settings.provider==='device'?'Loading local AI…':'Connecting '+providerName()+'…');flow.set('start',settings.source==='text'?'Connecting your answer model':'Getting audio and your answer model ready');
   try{
     const check=await request('/api/codex/check',{profile:effectiveProfile(),style:settings.style,answerModel:settings.answerModel,answerSpeed:settings.answerSpeed,autoDetect:settings.auto&&settings.source!=='text',audio:settings.source!=='text',dual:dualAudio(settings.source)},'POST',AbortSignal.any([aborter.signal,AbortSignal.timeout(settings.provider==='device'?900000:30000)]));if(mine!==generation)return;localSessionId=check.sessionId;
     if(settings.provider==='codex'&&settings.source!=='text'&&!config.localAudioAvailable)throw new Error('Local speech recognition is unavailable. Select Typed questions only in Settings.');
@@ -512,7 +521,7 @@ async function connectLocal(mine){
       }
       await audioCtx.resume();if(mine!==generation)return;audioMeter();
     }
-    connected=true;connecting=false;native?.reportPhase?.('listening');reader.describe();flow.set('listen',settings.source==='text'?'Type a question':'Ready for the interviewer');status(settings.source==='text'?(settings.provider==='device'?'Local AI ready':settings.provider==='chatgpt'?'ChatGPT ready':'Codex ready'):(settings.provider==='device'?'Listening · local AI':settings.provider==='chatgpt'?'Listening · ChatGPT':'Listening · Codex'),'live');$('questionLabel').textContent=settings.source==='text'?'ASK A QUESTION':'LISTENING';$('question').textContent=settings.source==='text'?'Type a question below.':dualAudio(settings.source)?'Listening to you and the interviewer…':'Waiting for the interviewer’s question…';notice('');syncControls();
+    connected=true;connecting=false;native?.reportPhase?.('listening');reader.describe();flow.set('listen',settings.source==='text'?'Type a question':'Ready for the interviewer');status(settings.source==='text'?(providerName()+' ready'):('Listening · '+providerName()),'live');$('questionLabel').textContent=settings.source==='text'?'ASK A QUESTION':'LISTENING';$('question').textContent=settings.source==='text'?'Type a question below.':dualAudio(settings.source)?'Listening to you and the interviewer…':'Waiting for the interviewer’s question…';notice('');syncControls();
     if(settings.source==='text'){$('typedForm').hidden=false;$('typedQuestion').focus();}
   }catch(e){if(mine===generation){native?.reportPhase?.('start-failed');stop('Could not start');notice(e.name==='NotAllowedError'?'Audio permission was not granted. Choose a source again or use typed questions.':e.message);}}
 }
@@ -549,7 +558,7 @@ function onSpeechText({text,source,final,forced=false,answerRevision:spokenRevis
   if(reading){
     $('heardLine').textContent='You: '+text;$('heardLine').hidden=false;
     if(final){localHistory.push({question:text,answer:'WAIT: Candidate response; context only, not a verified new fact.'});localHistory=localHistory.slice(-6);}
-    if(final&&!localBusy)status((settings.provider==='device'?'Listening · local AI':settings.provider==='chatgpt'?'Listening · ChatGPT':'Listening · Codex'),'live');
+    if(final&&!localBusy)status(('Listening · '+providerName()),'live');
     return;
   }
   if(!final)return;
@@ -558,7 +567,7 @@ function onSpeechText({text,source,final,forced=false,answerRevision:spokenRevis
   if(!forced&&lastTurn&&lastTurn.source==='system'&&source==='mic'&&now-lastTurn.at<12000&&sameUtterance(lastTurn.text,text))return;
   lastTurn={text,source,at:now};const heardLabel=shared?(sharedIntent==='candidate'?'Answer: ':'Room: '):(source==='mic'?'You: ':'Computer: ');$('heardLine').textContent=heardLabel+text;$('heardLine').hidden=false;
   const route=sharedIntent==='candidate'&&!forced?'context':turnRoute({text,source,hasAnswer:!!raw,forced,dual:dualAudio(settings.source)});
-  if(route!=='answer'){if(route==='context'){localHistory.push({question:text,answer:'WAIT: Candidate response; context only, not a verified new fact.'});localHistory=localHistory.slice(-6);}$('heardLine').textContent=heardLabel+text+' · Keeping your answer';if(!localBusy)status((settings.provider==='device'?'Listening · local AI':settings.provider==='chatgpt'?'Listening · ChatGPT':'Listening · Codex'),'live');return;}
+  if(route!=='answer'){if(route==='context'){localHistory.push({question:text,answer:'WAIT: Candidate response; context only, not a verified new fact.'});localHistory=localHistory.slice(-6);}$('heardLine').textContent=heardLabel+text+' · Keeping your answer';if(!localBusy)status(('Listening · '+providerName()),'live');return;}
   rememberQuestion(text);
   const replacement=!forced?questionReplacement(text,source):null;
   if(replacement&&settings.auto&&!editingQuestion){interviewerTurn.clear();if(replacement.question)interviewerTurn.accept(replacement.question);if(candidateSpeaking&&raw)bookmarkAnswer();void replaceQuestion(replacement.question?{question:replacement.question,autoDetect:false,showImmediately:true,inputSource:source,speechEndedAt}:null);return;}
@@ -590,7 +599,7 @@ $('showReadyAnswer').onclick=showReadyAnswer;
 $('answerButton').onclick=()=>{try{generate();}catch(e){notice(e.message);}};
 $('typedForm').onsubmit=async e=>{e.preventDefault();const text=$('typedQuestion').value.trim();if(!text)return;if(!connected){if(connecting)return;await startTextSession();if(!connected)return;}if(usesText()){closeQuestionEditor();interviewerTurn.clear();$('typedQuestion').value='';void replaceQuestion({question:text,autoDetect:false,showImmediately:true});return;}try{closeQuestionEditor();lastFinished=0;cancelAnswer();send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text}]}});generate();$('typedQuestion').value='';$('question').textContent=text;}catch(e){notice(e.message);}};
 $('sampleButton').onclick=async()=>{
-  stop();sourceBeforeText=settings.source;settings.answerModel=$('answerModel').value;settings.answerSpeed=$('answerSpeed').value;settings.provider=['device','chatgpt'].includes($('provider').value)?$('provider').value:'codex';settings.source='text';settings.profile=$('profile').value;settings.style=$('style').value;$('provider').value=settings.provider;$('settings').close();
+  stop();sourceBeforeText=settings.source;settings.answerModel=$('answerModel').value;settings.answerSpeed=$('answerSpeed').value;settings.provider=['device','chatgpt','openai','anthropic'].includes($('provider').value)?$('provider').value:'codex';settings.source='text';settings.profile=$('profile').value;settings.style=$('style').value;$('provider').value=settings.provider;$('settings').close();
   try{if(settings.provider==='device')await prepareDevice(undefined,true);await connect();if(!connected)return;const sampleGeneration=generation;notice('Recorded sample test · real transcription and AI answer · microphone and system capture are not being tested');const ctx=new AudioContext({sampleRate:16000});try{const audio=await ctx.decodeAudioData(await(await fetch('/sample-question.wav')).arrayBuffer());if(sampleGeneration===generation)await localAnswer({pcm:pcmBase64(audio.getChannelData(0))});}finally{await ctx.close();}}catch(e){notice(e.message);}
 };
 $('typeButton').onclick=()=>{if($('typedForm').hidden)openQuestionEditor();else closeQuestionEditor();};
@@ -657,6 +666,13 @@ if(!read('quietLayoutV1',false)){write('coachEnabled',false);write('quietLayoutV
 coach.enabled=read('coachEnabled',false);$('coachEnabled').checked=coach.enabled;
 $('coachEnabled').onchange=()=>{coach.toggle($('coachEnabled').checked);write('coachEnabled',coach.enabled);if(coach.enabled&&connected&&lastHeardQuestion)coach.begin(lastHeardQuestion);};
 $('returnAnswer').onclick=()=>void returnToAnswer();
+async function cloudApiAnswer(data,signal){
+  await localDevice();let question=data.question;if(!question)question=await deviceRuntime.transcribe(data.pcm,signal);
+  const provider=settings.provider,model=read('apiModel:'+provider,'');
+  if(!model)throw new Error('Choose your answer model in Your AI.');
+  const messages=deviceModule.answerMessages({...data,question,knowledge:background}).map(m=>({...m,content:m.content.replace(/\n\/(?:no_)?think$/,'')}));
+  return apiResponse(native,{question,provider,model,messages},signal);
+}
 async function chatGPTAnswer(data,signal){
   await localDevice();let question=data.question;if(!question)question=await deviceRuntime.transcribe(data.pcm,signal);
   const model=read('chatGPTModel','');if(!model)throw new Error('Choose your ChatGPT model in Your AI.');
@@ -672,7 +688,7 @@ personalSetup=setupUI({$,native,read,write,getSettings:()=>settings,localStatus:
 $('settingsContext').onclick=()=>{$('settings').close();void personalSetup.open('context');};
 $('settingsAI').onclick=()=>{$('settings').close();void personalSetup.open('ai');};
 async function init(){seed=await(await fetch('/seed.json')).json();if(localStorage.getItem('cue.provider')===null&&seed.defaultProvider)settings.provider=seed.defaultProvider;if(localStorage.getItem('cue.deviceModel')===null&&seed.defaultDeviceModel)settings.deviceModel=seed.defaultDeviceModel;settings.profile=read('profile',seed.profile);const reconciled=reconcileProfile(settings.profile);if(reconciled!==settings.profile){if(!read('profileBeforeBackgroundImport',null))write('profileBeforeBackgroundImport',settings.profile);settings.profile=reconciled;write('profile',reconciled);}const usingWorkspace=await loadInterviews();backgroundLoad=usingWorkspace?Promise.resolve():loadBackground();$('profile').value=settings.profile;$('style').value=settings.style;$('provider').value=settings.provider;$('deviceModel').value=settings.deviceModel;for(const m of ANSWER_MODELS)$('answerModel').add(new Option(m.label,m.id));$('answerModel').value=settings.answerModel;$('answerSpeed').value=settings.answerSpeed;$('audioSource').value=settings.source;$('autoAnswer').checked=settings.auto;$('echoCancellation').checked=settings.echoCancellation;$('fontSize').value=read('font',31);$('glass').value=read('glass',76);$('fontSize').oninput();$('glass').oninput();audioSourceUI();if(native){await native.protectCapture(read('captureProtection',true));const state=await native.status();$('shareButton').hidden=state.platform!=='darwin';renderShareState(state.shareView);}try{const registry=await(await fetch('/platforms.json')).json();platforms=registry.platforms;for(const p of platforms){const option=document.createElement('option');option.value=p.id;option.textContent=p.name;$('meetingPlatform').append(option);}$('meetingPlatform').value=read('platform','unknown');platformHelp();}catch{$('platformHelp').textContent='Platform guidance could not load. Verify your sharing setup before use.';}await refreshConfig();await backgroundLoad;providerUI();syncControls();syncArchive();reader.describe();flow.set('idle','Start once. Questions are handled automatically.');}
-init().then(()=>{native?.ready?.();if(seed.firstRunSetup&&!read('setupComplete',false))void personalSetup.open('context');else if(settings.provider==='chatgpt')void personalSetup.refreshAccount().catch(()=>{});if(settings.provider==='device'&&read('devicePrepared',false)){const message='Loading your saved local AI…';notice(message);void prepareDevice().then(()=>{if($('notice').textContent===message)notice('Local AI ready. Recording is off.');}).catch(e=>{$('deviceProgress').textContent=e.message;notice('Local AI needs attention. Open Settings → Model & connection.');});}}).catch(()=>{notice('Setup could not load. Close and reopen Cue.');flow.set('error','Setup could not load');});
+init().then(async()=>{try{if(settings.provider==='chatgpt')await personalSetup.refreshAccount();else if(apiProvider())await personalSetup.refreshApi();}catch(e){notice(e.message);}native?.ready?.();if(seed.firstRunSetup&&!read('setupComplete',false))void personalSetup.open('context');else if(settings.provider==='chatgpt')void personalSetup.refreshAccount().catch(()=>{});if(settings.provider==='device'&&read('devicePrepared',false)){const message='Loading your saved local AI…';notice(message);void prepareDevice().then(()=>{if($('notice').textContent===message)notice('Local AI ready. Recording is off.');}).catch(e=>{$('deviceProgress').textContent=e.message;notice('Local AI needs attention. Open Settings → Model & connection.');});}}).catch(()=>{notice('Setup could not load. Close and reopen Cue.');flow.set('error','Setup could not load');});
 
 let setupAbort;
 $('prepareDevice').onclick=async()=>{

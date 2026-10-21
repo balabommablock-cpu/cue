@@ -43,7 +43,7 @@ final class ShareViewApp: NSObject, NSApplicationDelegate, NSWindowDelegate, SCS
     var stopped = false
     let parentPID: pid_t
     let displayID: CGDirectDisplayID
-    let queue = DispatchQueue(label: "io.github.cue.community.share.frames")
+    let queue = DispatchQueue(label: "com.boredfolio.cue.share.frames")
     var framePending = false
     let frameLock = NSLock()
 
@@ -100,7 +100,7 @@ final class ShareViewApp: NSObject, NSApplicationDelegate, NSWindowDelegate, SCS
             guard let display = content.displays.first(where: { $0.displayID == displayID }) else {
                 fail("The selected display is unavailable. Close this window and choose a display again."); return
             }
-            let exclusions = content.applications.filter { $0.processID == parentPID || $0.processID == getpid() || $0.bundleIdentifier == "io.github.cue.community" || $0.bundleIdentifier == "io.github.cue.community.shareview" }
+            let exclusions = content.applications.filter { $0.processID == parentPID || $0.processID == getpid() || $0.bundleIdentifier == "com.boredfolio.cue" || $0.bundleIdentifier == "com.boredfolio.cue.shareview" }
             // Refuse to capture if we cannot identify both private UI and this preview.
             guard exclusions.contains(where: { $0.processID == parentPID }), exclusions.contains(where: { $0.processID == getpid() }) else {
                 fail("Cue's private windows could not be identified. No screen content was captured. Close Share View and retry."); return

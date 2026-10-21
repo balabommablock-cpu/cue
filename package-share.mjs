@@ -13,8 +13,8 @@ execFileSync('python3',['scripts/audit-public.py'],{cwd:root,stdio:'inherit'});
 const pkg=JSON.parse(await readFile(join(root,'package.json'),'utf8'));
 await rm(stage,{recursive:true,force:true});await mkdir(stage,{recursive:true});
 // Package only this manifest. Never include local accounts, workspaces or .env.
-const files=['chatgpt-auth.bundle.mjs','chatgpt-desktop.cjs','desktop.cjs','preload.cjs',
- 'desktop-lifecycle.cjs','desktop-start.cjs','share-view.cjs','session-interrupts.cjs',
+const files=['api-providers.mjs','api-desktop.cjs','chatgpt-auth.bundle.mjs','chatgpt-desktop.cjs','desktop.cjs','preload.cjs',
+ 'desktop-data.cjs','desktop-lifecycle.cjs','desktop-start.cjs','share-view.cjs','session-interrupts.cjs',
  'server.mjs','prompt.mjs','local-provider.mjs','codex-stream.mjs','speech-worker.mjs',
  'transcribe.py','answer-context.mjs','coaching.mjs','knowledge.mjs','knowledge-bank.mjs',
  'interview-workspace.mjs','background.json'];
@@ -36,7 +36,7 @@ for(const [location,data] of Object.entries(lock.packages)){
 }
 await writeFile(join(stage,'THIRD_PARTY_NOTICES.txt'),notices);
 const nativeApp=await buildNative(),launcher=await buildLauncher();
-const [output]=await packager({dir:stage,name:'Cue',executableName:'Cue',appBundleId:'io.github.cue.community',appVersion:pkg.version,electronVersion:lock.packages['node_modules/electron'].version,platform:'darwin',arch:process.arch,out:join(root,'dist','share'),overwrite:true,asar:true,prune:false,icon:join(root,'assets','Cue.icns'),extraResource:[nativeApp,launcher],extendInfo:{LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Cue listens only when you start. On this Mac mode transcribes locally.',NSAudioCaptureUsageDescription:'Cue transcribes selected computer audio. Local mode processes it on this Mac.',NSScreenCaptureUsageDescription:'Cue uses screen recording for computer audio and optional Share View. Screen images are not sent to AI.'}});
+const [output]=await packager({dir:stage,name:'Cue',executableName:'Cue',appBundleId:'com.boredfolio.cue',appVersion:pkg.version,electronVersion:lock.packages['node_modules/electron'].version,platform:'darwin',arch:process.arch,out:join(root,'dist','share'),overwrite:true,asar:true,prune:false,icon:join(root,'assets','Cue.icns'),extraResource:[nativeApp,launcher],extendInfo:{LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Cue listens only when you start. On this Mac mode transcribes locally.',NSAudioCaptureUsageDescription:'Cue transcribes selected computer audio. Local mode processes it on this Mac.',NSScreenCaptureUsageDescription:'Cue uses screen recording for computer audio and optional Share View. Screen images are not sent to AI.'}});
 const app=join(output,'Cue.app');await signDesktop(app);
 const target=process.arch==='arm64'?'Apple-Silicon':'Intel';
 const zip=join(root,'dist','share',`Cue-${pkg.version}-${target}.zip`);

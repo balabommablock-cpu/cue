@@ -28,10 +28,10 @@ export async function buildNative(){
   }catch{}
   await mkdir(join(contents,'MacOS'),{recursive:true});
   await writeFile(join(contents,'Info.plist'),`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>CueShareView</string><key>CFBundleIdentifier</key><string>io.github.cue.community.shareview</string><key>CFBundleName</key><string>Cue Share View</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1.2.0</string><key>CFBundleShortVersionString</key><string>1.2.0</string><key>LSMinimumSystemVersion</key><string>13.0</string><key>LSUIElement</key><true/><key>NSHighResolutionCapable</key><true/><key>NSScreenCaptureUsageDescription</key><string>Build a local presentation that excludes Cue. Select this window in your meeting to share it. No screen video is sent to AI services.</string>
+<key>CFBundleExecutable</key><string>CueShareView</string><key>CFBundleIdentifier</key><string>com.boredfolio.cue.shareview</string><key>CFBundleName</key><string>Cue Share View</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1.2.0</string><key>CFBundleShortVersionString</key><string>1.2.0</string><key>LSMinimumSystemVersion</key><string>13.0</string><key>LSUIElement</key><true/><key>NSHighResolutionCapable</key><true/><key>NSScreenCaptureUsageDescription</key><string>Build a local presentation that excludes Cue. Select this window in your meeting to share it. No screen video is sent to AI services.</string>
 </dict></plist>`);
   execFileSync('xcrun',['swiftc','-swift-version','5','-O','-target',`${process.arch==='arm64'?'arm64':'x86_64'}-apple-macos13.0`,'native/ShareView.swift','-o',join(contents,'MacOS','CueShareView'),'-framework','AppKit','-framework','ScreenCaptureKit','-framework','AVFoundation'],{cwd:import.meta.dirname,stdio:'inherit'});
-  execFileSync('codesign',['--force','--sign','-','--identifier','io.github.cue.community.shareview',app],{stdio:'inherit'});
+  execFileSync('codesign',['--force','--sign','-','--identifier','com.boredfolio.cue.shareview',app],{stdio:'inherit'});
   await writeFile(fingerprintFile,JSON.stringify({fingerprint,binaryHash:hash(await readFile(executable)),plistHash:hash(await readFile(join(contents,'Info.plist')))},null,2)+'\n');
   return app;
 }

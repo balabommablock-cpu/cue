@@ -12,3 +12,5 @@ test('saved ChatGPT account selector sends the selected id before rerendering',a
  const r=await renderer({native:{onShareState(){},onAction(){},ready(){},accountStatus:async()=>({ok:true,value:{id:selected,accounts,status:'disconnected',sharing:false}}),accountSelect:async id=>{selected=id;return {ok:true,value:{}};},protectCapture:async()=>true,status:async()=>({platform:'darwin',screen:'granted',microphone:'granted'})}});
  await r.el('aiShortcut').click();r.el('chatGPTAccount').value='two';await r.el('chatGPTAccount').onchange();assert.equal(selected,'two');assert.equal(r.el('chatGPTAccount').value,'two');r.close();
 });
+
+test('the full page has unique control IDs, including separate API and Realtime key fields',async()=>{const {readFile}=await import('node:fs/promises');const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);assert.ok(ids.includes('providerApiKey'));assert.ok(ids.includes('apiKey'));});

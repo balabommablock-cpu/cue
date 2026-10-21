@@ -1,8 +1,8 @@
 # Cue
 
-A small, translucent desktop assistant that helps you stay in a conversation. Bring your own context, choose local AI or your own ChatGPT account, and get concise cues you can read at a glance.
+A small, translucent desktop assistant that helps you stay in a conversation. Bring your own context, choose local AI, your own ChatGPT account, or an OpenAI/Claude API key, and get concise cues you can read at a glance.
 
-This Community edition starts with **no biography, saved account or previous user's notes**. Use assistance where the participants or assessment rules permit it.
+A fresh installation starts with **no biography, saved account or previous user's notes**. Existing Cue users keep their own local account, notes and cache when upgrading. Use assistance where the participants or assessment rules permit it.
 
 ![Cue displaying a prewritten example, with recording off](docs/images/cue-preview.png)
 
@@ -12,7 +12,7 @@ Mac with Apple silicon, macOS 14.2 or newer. 16 GB memory is recommended; larger
 
 1. Get the Mac preview from [Releases](https://github.com/balabommablock-cpu/cue/releases). Move Cue.app to Applications.
 2. Open **Your context** to add your CV or notes. Review what was imported before saving.
-3. Open **Your AI**. Connect your own eligible ChatGPT account, or choose **On this Mac** and download a local model once.
+3. Open **Your AI**. Connect your own eligible ChatGPT account, use your **OpenAI API** or **Claude API** key, or choose **On this Mac** and download a local model once. API connections load available text models and also accept exact custom model IDs.
 4. Try a typed question first. Then choose computer audio, microphone, or both and press **Start listening**. macOS asks for the relevant permissions.
 
 The preview is ad-hoc signed, **not Apple notarized**. A new Mac may block opening it. Developer ID signing and notarization remain a release requirement for a smooth installation; this repository does not supply a signing identity.
@@ -23,9 +23,9 @@ The preview is ad-hoc signed, **not Apple notarized**. A new Mac may block openi
 - **Reading presets**: Compact, Comfortable and Large text. Export a preference file and import it on another Mac. Preference files exclude context, accounts, API keys and microphone device identifiers.
 - **Settings → Show me**: an opening thought with short cues, or a conversational script.
 - **Your context**: edit or export your notes. Confirm stories before using them as personal evidence.
-- **Your AI**: change accounts, local model size or answer model. Advanced settings retain Codex and OpenAI Realtime connections.
+- **Your AI**: change accounts, API providers, local model size or answer model. Advanced settings retain Codex and OpenAI Realtime connections.
 
-Community stores its data separately in `~/Library/Application Support/Cue Community`. It does not adopt another Cue edition's saved account or knowledge workspace. Global launcher setup is optional: see [development](docs/DEVELOPMENT.md).
+Cue normally keeps your data in `~/Library/Application Support/Cue`. An early Community-only installation continues using its existing `Cue Community` folder when no main Cue folder exists. Data is never copied from the developer’s computer into a release. Global launcher setup is optional: see [development](docs/DEVELOPMENT.md).
 
 ## AI choices
 
@@ -33,10 +33,24 @@ Community stores its data separately in `~/Library/Application Support/Cue Commu
 | --- | --- | --- |
 | On this Mac | Qwen3 answers and Whisper speech recognition | Model files are downloaded during setup; inference does not call a cloud model |
 | ChatGPT | Speech recognition and context selection | Transcribed questions and relevant notes go to OpenAI through your own authorized account |
+| OpenAI API | Speech recognition and context selection | Selected text and relevant notes go to OpenAI using your own API key |
+| Claude API | Speech recognition and context selection | Selected text and relevant notes go to Anthropic using your own API key |
 | Codex, advanced | Speech recognition and context selection | Selected text and reference facts go through your own installed Codex connection |
 | OpenAI Realtime, advanced | Audio capture | Selected audio is sent to OpenAI using an API key you provide |
 
 Local models are less capable than leading cloud models. Calculations and personal questions can take longer. There is no sub-second guarantee. ChatGPT plan access is subject to eligibility and the account's current limits; it does not read ChatGPT chat history. AI coaching and practice feedback currently require Codex.
+
+## API keys and model selection
+
+![Cue AI setup with the classic green appearance](docs/images/ai-setup.png)
+
+In **Your AI**, choose OpenAI API or Claude API, paste your key, then press **Connect & load models**. Select a model from the suggestions or enter the exact ID of a compatible text model, including a fine-tuned model. There is no fixed API-model shortlist. Your provider must grant the key access and sufficient API credit.
+
+Keys are encrypted with macOS-protected storage, kept in the native main process after entry, and never returned to the UI. Replace or remove a key in the same panel. Claude keys that span workspaces may need the optional workspace ID. Claude subscription/Claude Code OAuth tokens are not accepted as Console API keys.
+
+OpenAI uses Responses, with Chat Completions compatibility for older text models. Claude uses the Messages API. Only answer text is displayed; thinking events are ignored. Failed or truncated streams are reported, and cancellation stops the local request.
+
+Protocol references: [OpenAI models](https://developers.openai.com/api/reference/resources/models/methods/list), [OpenAI streaming](https://developers.openai.com/api/docs/guides/streaming-responses), [Claude authentication](https://platform.claude.com/docs/en/manage-claude/authentication), [Claude models](https://platform.claude.com/docs/en/api/models/list), [Claude streaming](https://platform.claude.com/docs/en/build-with-claude/streaming).
 
 ## Screen sharing
 
@@ -72,7 +86,7 @@ The package is created under `dist/share/`. It contains an empty profile, bundle
 
 ## Security and ownership
 
-Account tokens are encrypted through Electron safeStorage and stay in the native main process. The renderer receives status and answer text. API keys entered in Realtime settings are session-only. The local server binds to loopback, rejects foreign request origins and serves an explicit asset allowlist.
+Account tokens and saved API keys are encrypted through Electron safeStorage and stay in the native main process. The renderer receives status and answer text. API keys entered in Realtime settings are session-only. The local server binds to loopback, rejects foreign request origins and serves an explicit asset allowlist.
 
 The repository has a fresh history, a Gitleaks scan and a separate public-source audit. Runtime data, environment files, credentials, signing keys, local workspaces, private research and deployment-owner secrets are excluded. See [SECURITY.md](SECURITY.md) before reporting a vulnerability.
 
