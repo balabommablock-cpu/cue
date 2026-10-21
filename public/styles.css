@@ -65,3 +65,5 @@
 #setupAPI h2{font-size:20px;margin:0 0 10px}#setupAPI>.primary{margin-top:18px}#setupAPI input{max-width:100%}#apiProviderTitle,#apiKeyStatus{overflow-wrap:anywhere}
 
 .ai-picker{border:1px solid #b9d2c130;border-radius:12px;padding:12px 14px;margin:18px 0}.ai-picker>summary{cursor:pointer;font-size:14px;font-weight:550;color:#d8eadf}.ai-picker .ai-choices{margin-bottom:0}.api-workspace{margin-top:16px;font-size:13px;color:#b8cbbb}.api-workspace>summary{cursor:pointer}#setupAPI .setup-tools{align-items:center}#apiModelWrap>.primary{margin-top:18px}
+
+.setup-test-actions{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 12px}.local-recovery{border-top:1px solid #b9d2c130;margin-top:18px;padding-top:8px}.setup-dialog .setup-steps button:disabled{opacity:.5}.setup-dialog select:disabled{opacity:.6}

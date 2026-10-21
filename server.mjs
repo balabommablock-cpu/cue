@@ -11,6 +11,7 @@ import {knowledge as defaultKnowledge,knowledgeText} from './knowledge.mjs';
 import {answerOptions} from './public/model-options.js';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
+const appVersion=JSON.parse(await readFile(new URL('./package.json',import.meta.url),'utf8')).version;
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ...['api-setup-ui.js','api-ui.js','preferences-ui.js','setup-ui.js','account-ui.js','story-core.js','coach-ui.js','story-ui.js','voice-notes.js','background-ui.js','model-options.js','progress-ui.js','question-joiner.js'].map(name=>['/'+name,[name,'text/javascript; charset=utf-8']]),
@@ -87,7 +88,7 @@ export function createApp({workspace=null,knowledge=defaultKnowledge,coach=coach
     const client = clientFor(req, res);
     try {
       if (req.method === 'GET' && path === '/api/config')
-        return json(200, {keyConfigured: !!(client.key || apiKey), keySource: client.key ? 'session' : apiKey ? 'environment' : 'none', model,...local.capabilities(),background:workspace?(client.interviewId?workspace.get(client.interviewId).summary():{}):knowledge.summary()});
+        return json(200, {version:appVersion,keyConfigured: !!(client.key || apiKey), keySource: client.key ? 'session' : apiKey ? 'environment' : 'none', model,...local.capabilities(),background:workspace?(client.interviewId?workspace.get(client.interviewId).summary():{}):knowledge.summary()});
       if(req.method==='GET'&&path==='/api/interviews')return json(200,workspace?workspace.list():{legacy:true,interviews:[]});
       if(req.method==='POST'&&path==='/api/interviews'){
         if(!workspace)throw fail('An interview workspace has not been configured.',503);

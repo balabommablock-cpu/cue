@@ -7,7 +7,7 @@ export {answerMessages} from './messages.mjs';
 export function createRuntime({progress=()=>{},brainFactory=p=>new LocalBrain(p),speechFactory=p=>new LocalSpeech(p),deviceCheck=checkDevice}={}){
   const brain=brainFactory(p=>progress({kind:'answer',...p}));
   const speech=speechFactory(p=>progress({kind:'speech',...p}));
-  let preparing=null,serial=Promise.resolve(),active='',choice='balanced',revision=0;
+  let preparing=null,preparingModel='',setupRevision=0,serial=Promise.resolve(),active='',choice='balanced',revision=0;
   let speechPreparing;
   async function prepareSpeech(signal){
     signal?.throwIfAborted();if(speech.ready)return;
@@ -17,18 +17,26 @@ export function createRuntime({progress=()=>{},brainFactory=p=>new LocalBrain(p)
   }
   async function prepare({audio=true,model='balanced'}={},signal){
     signal?.throwIfAborted();
-    if(preparing){await preparing;signal?.throwIfAborted();}
-    if(brain.ready&&choice===model&&(!audio||speech.ready))return;
-    const abort=()=>{revision++;brain.dispose();speech.dispose();};signal?.addEventListener('abort',abort,{once:true});
-    const job=(async()=>{
-      const device=await deviceCheck();if(!device.ok)throw new Error(device.message);signal?.throwIfAborted();
-      if(!brain.ready||choice!==model){await brain.load(model);choice=model;}
+    if(preparing){
+      const prior=preparing,different=preparingModel!==model;
+      if(different)cancelSetup();
+      try{await prior;}catch(error){if(!different)throw error;}
       signal?.throwIfAborted();
+    }
+    if(brain.ready&&choice===model&&(!audio||speech.ready))return;
+    const token=++setupRevision;
+    const ensureCurrent=()=>{signal?.throwIfAborted();if(token!==setupRevision)throw new DOMException('Setup cancelled.','AbortError');};
+    const abort=()=>{if(token===setupRevision)cancelSetup();};signal?.addEventListener('abort',abort,{once:true});
+    const job=(async()=>{
+      const device=await deviceCheck();if(!device.ok)throw new Error(device.message);ensureCurrent();
+      if(!brain.ready||choice!==model){await brain.load(model);choice=model;}
+      ensureCurrent();
       if(audio&&!speech.ready)await speech.load();
-      signal?.throwIfAborted();progress({kind:'ready',text:'Local AI is ready on this Mac.'});
-    })();preparing=job;
-    try{await job;}finally{signal?.removeEventListener('abort',abort);if(preparing===job)preparing=null;}
+      ensureCurrent();progress({kind:'ready',text:'Local AI is ready on this Mac.'});
+    })();preparing=job;preparingModel=model;
+    try{await job;}finally{signal?.removeEventListener('abort',abort);if(preparing===job){preparing=null;preparingModel='';}}
   }
+  function cancelSetup(){setupRevision++;revision++;brain.dispose();speech.dispose();}
   async function transcribe(pcm,signal){
     signal?.throwIfAborted();if(!speech.ready)throw new Error('Prepare local listening in Settings first.');
     if(typeof pcm!=='string'||pcm.length>2560000)throw new Error('Invalid audio.');
@@ -73,8 +81,8 @@ export function createRuntime({progress=()=>{},brainFactory=p=>new LocalBrain(p)
   }
   return {prepare,prepareSpeech,transcribe,answerResponse,status:()=>({answer:brain.ready,speech:speech.ready,model:choice,loading:!!preparing}),
     async interrupt(){brain.interrupt();await serial;return {interrupted:true};},
-    cancelSetup(){revision++;brain.dispose();speech.dispose();},
+    cancelSetup,
     stop(){revision++;brain.interrupt();},
-    dispose(){revision++;brain.dispose();speech.dispose();},
+    dispose:cancelSetup,
   };
 }

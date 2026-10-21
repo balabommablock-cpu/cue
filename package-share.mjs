@@ -1,5 +1,5 @@
 import {packager} from '@electron/packager';
-import {mkdir,rm,cp,readFile,writeFile,readdir} from 'node:fs/promises';
+import {mkdir,rm,cp,readFile,writeFile,readdir,symlink,stat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -43,5 +43,17 @@ const zip=join(root,'dist','share',`Cue-${pkg.version}-${target}.zip`);
 await rm(zip,{force:true});execFileSync('ditto',['-c','-k','--sequesterRsrc','--keepParent',app,zip]);
 const digest=createHash('sha256').update(await readFile(zip)).digest('hex');
 await writeFile(zip+'.sha256',`${digest}  ${zip.split('/').at(-1)}\n`);
-await writeFile(join(root,'dist','share','release-audit.json'),JSON.stringify({version:pkg.version,architecture:process.arch,seedProfileEmpty:true,backgroundRecords:0,signature:'ad-hoc; not Developer ID signed or notarized',sha256:digest},null,2));
-console.log(JSON.stringify({app,zip,sha256:digest,signature:'Ad-hoc only; not notarized'},null,2));
+const dmgStage=join(root,'dist','dmg-stage'),dmg=join(root,'dist','share',`Cue-${pkg.version}-${target}.dmg`);
+await rm(dmgStage,{recursive:true,force:true});await mkdir(dmgStage,{recursive:true});
+try{
+ execFileSync('ditto',[app,join(dmgStage,'Cue.app')]);
+ await symlink('/Applications',join(dmgStage,'Applications'),'dir');
+ await writeFile(join(dmgStage,'Install Cue.txt'),`Install Cue ${pkg.version}\n\n1. Drag Cue.app into Applications.\n2. Open Cue from Applications. You can then eject this disk image.\n3. Add your own context and choose your AI. Recording starts only when you choose Start listening.\n\nUpdating? Quit the old Cue app first and replace it in Applications. Your own saved context, accounts and downloaded models stay in your local app data.\n\nThis preview is ad-hoc signed and is not Apple notarized. macOS may block it. Do not disable your Mac's security protections. A normally signed public release is still pending.\n\nHelp and current downloads: https://github.com/balabommablock-cpu/cue\n`);
+ await rm(dmg,{force:true});
+ execFileSync('hdiutil',['create','-volname','Cue','-srcfolder',dmgStage,'-fs','HFS+','-format','UDZO','-ov',dmg],{stdio:'pipe'});
+}finally{await rm(dmgStage,{recursive:true,force:true});}
+const dmgDigest=createHash('sha256').update(await readFile(dmg)).digest('hex');
+await writeFile(dmg+'.sha256',`${dmgDigest}  ${dmg.split('/').at(-1)}\n`);
+const artifacts={zip:{file:zip.split('/').at(-1),bytes:(await stat(zip)).size,sha256:digest},dmg:{file:dmg.split('/').at(-1),bytes:(await stat(dmg)).size,sha256:dmgDigest}};
+await writeFile(join(root,'dist','share','release-audit.json'),JSON.stringify({version:pkg.version,architecture:process.arch,seedProfileEmpty:true,backgroundRecords:0,signature:'ad-hoc; not Developer ID signed or notarized',sha256:digest,artifacts},null,2));
+console.log(JSON.stringify({app,zip,dmg,artifacts,signature:'Ad-hoc only; not notarized'},null,2));

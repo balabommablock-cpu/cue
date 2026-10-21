@@ -10,12 +10,18 @@ A fresh installation starts with **no biography, saved account or previous user'
 
 Mac with Apple silicon, macOS 14.2 or newer. 16 GB memory is recommended; larger local models need more memory.
 
-1. Get the Mac preview from [Releases](https://github.com/balabommablock-cpu/cue/releases). Move Cue.app to Applications.
+1. Get the Mac preview from [Releases](https://github.com/balabommablock-cpu/cue/releases). Open the DMG and drag Cue into Applications. A ZIP alternative is also available.
 2. Open **Your context** to add your CV or notes. Review what was imported before saving.
 3. Open **Your AI**. Connect your own eligible ChatGPT account, use your **OpenAI API** or **Claude API** key, or choose **On this Mac** and download a local model once. API connections load available text models and also accept exact custom model IDs.
-4. Try a typed question first. Then choose computer audio, microphone, or both and press **Start listening**. macOS asks for the relevant permissions.
+4. Open **Try it**. Try a typed question or the included sample voice with your microphone off. Choose where your conversation will happen, then press **Start listening** for live audio. macOS asks for the relevant permissions.
 
 The preview is ad-hoc signed, **not Apple notarized**. A new Mac may block opening it. Developer ID signing and notarization remain a release requirement for a smooth installation; this repository does not supply a signing identity.
+
+![Cue first-use test, with the microphone off](docs/images/try-cue.png)
+
+Closing setup cancels pending downloads. Completed files can be reused on retry. If a model fails to load, Cue offers a smaller-model retry and a different AI connection.
+
+To update, quit Cue and replace it in Applications with the new download. Your own local context, accounts and model cache stay in place.
 
 ## Make it yours
 

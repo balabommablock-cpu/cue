@@ -21,7 +21,7 @@ export async function renderer({fetch:override,prefs={},native}={}){
  }
  const el=name=>{if(!elements.has(name))elements.set(name,new Element(name));return elements.get(name);};
  const requests=[],store=new Map(Object.entries({source:'text',provider:'codex',...prefs}).map(([k,v])=>['cue.'+k,JSON.stringify(v)]));
- const context=vm.createContext({console,crypto:webcrypto,URL,Response,ReadableStream,TextDecoder,TextEncoder,AbortController,AbortSignal,DOMException,performance,Float32Array,Uint8Array,DataView,Set,Map,
+ const context=vm.createContext({console,crypto:webcrypto,URL,Response,ReadableStream,TextDecoder,TextEncoder,AbortController,AbortSignal,DOMException,performance,Float32Array,Uint8Array,DataView,Set,Map,btoa,atob,
   window:{addEventListener(){},cueDesktop:native},document:{getElementById:el,createElement:tag=>new Element(tag),body:el('body'),documentElement:el('root'),addEventListener(){},createRange(){return {setStart(_text,offset){this.offset=offset;},setEnd(){},getBoundingClientRect(){return {top:this.offset*2};}};}},
   localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)},Option:class{constructor(text,value){this.text=text;this.value=value;}},
   navigator:{mediaDevices:{enumerateDevices:async()=>[]}},AudioContext:class{},MediaStream:class{},matchMedia:()=>({matches:true}),

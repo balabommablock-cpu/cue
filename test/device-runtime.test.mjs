@@ -44,3 +44,23 @@ test('unknown personal experience does not receive unrelated general conversatio
   await read(f.runtime.answerResponse({question:'What is photosynthesis?',profile:'Confidential career details.',history:[{question:'Tell me about yourself',answer:'ANSWER: Confidential career details.'}]}));
   assert.doesNotMatch(JSON.stringify(f.messages),/Confidential career/);
 });
+
+test('cancelling setup while the GPU check is pending cannot load a model or emit ready later',async()=>{
+ let resolveCheck,loads=0;const progress=[];
+ const runtime=createRuntime({progress:p=>progress.push(p),deviceCheck:()=>new Promise(r=>resolveCheck=r),brainFactory:()=>({ready:false,load:async()=>{loads++;},dispose(){},interrupt(){}}),speechFactory:()=>({dispose(){}})});
+ const work=runtime.prepare();runtime.cancelSetup();resolveCheck({ok:true});await assert.rejects(work,{name:'AbortError'});assert.equal(loads,0);assert.equal(progress.some(p=>p.kind==='ready'),false);
+});
+
+test('changing local models cancels an unfinished load and lets the new selection finish',async()=>{
+ let cancel,loads=[];const progress=[];
+ const brain={ready:false,load(model){loads.push(model);if(model==='strong')return new Promise((_r,reject)=>{cancel=()=>reject(new DOMException('Cancelled','AbortError'));});brain.ready=true;return Promise.resolve();},dispose(){brain.ready=false;cancel?.();cancel=null;},interrupt(){}};
+ const runtime=createRuntime({progress:p=>progress.push(p),brainFactory:()=>brain,speechFactory:()=>({ready:true,dispose(){}}),deviceCheck:async()=>({ok:true})});
+ const old=runtime.prepare({model:'strong',audio:false});const rejected=assert.rejects(old,{name:'AbortError'});await new Promise(r=>setImmediate(r));
+ await runtime.prepare({model:'light',audio:false});await rejected;assert.deepEqual(loads,['strong','light']);assert.equal(runtime.status().model,'light');assert.equal(runtime.status().answer,true);assert.equal(progress.filter(p=>p.kind==='ready').length,1);
+});
+
+test('simultaneous setup requests for one model share the load',async()=>{
+ let loads=0,finish;const brain={ready:false,load:async()=>{loads++;await new Promise(r=>finish=r);brain.ready=true;},dispose(){},interrupt(){}};
+ const runtime=createRuntime({brainFactory:()=>brain,speechFactory:()=>({ready:true}),deviceCheck:async()=>({ok:true})});
+ const a=runtime.prepare({model:'light',audio:false}),b=runtime.prepare({model:'light',audio:false});await new Promise(r=>setImmediate(r));finish();await Promise.all([a,b]);assert.equal(loads,1);assert.equal(runtime.status().answer,true);
+});

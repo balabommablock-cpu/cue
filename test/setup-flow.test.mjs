@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {renderer} from '../test-support/renderer-harness.mjs';
+import {renderer,tick} from '../test-support/renderer-harness.mjs';
 test('personal setup saves reviewed notes and discards unsaved edits when closed',async()=>{
  const r=await renderer();await r.el('contextShortcut').click();assert.equal(r.el('setupDialog').open,true);
  r.el('profile').value='A confirmed new experience, with a specific outcome.';r.el('savePersonalContext').click();assert.equal(r.run('settings.profile'),'A confirmed new experience, with a specific outcome.');
@@ -27,4 +27,35 @@ test('failed local setup leaves the working provider selected and shows the erro
  r.run("deviceModule={}; deviceRuntime={prepare:async()=>{throw new Error('Not enough graphics memory. Try the smaller model.');},status:()=>({answer:false,speech:false})};");
  await r.el('aiShortcut').click();r.el('chooseLocal').click();await r.el('useLocal').click();
  assert.equal(r.run('settings.provider'),'codex');assert.match(r.el('setupMessage').textContent,/smaller model/);assert.equal(r.el('useLocal').disabled,false);assert.equal(r.el('simpleLocalModel').disabled,false);assert.equal(r.run('read("devicePrepared",false)'),false);r.close();
+});
+
+test('closing a pending download aborts it and a late result cannot switch AI or mark setup ready',async()=>{
+ const r=await renderer({prefs:{provider:'codex'}});
+ r.run("deviceModule={}; deviceRuntime={prepare:async (_options,signal)=>{window.setupSignal=signal;await new Promise(resolve=>window.finishDownload=resolve);},status:()=>({answer:false,speech:false})};");
+ await r.el('aiShortcut').click();r.el('chooseLocal').click();const work=r.el('useLocal').click();await tick();
+ assert.equal(r.el('setupStepcontext').disabled,true);r.el('setupStepcontext').click();assert.equal(r.el('setupAIPanel').hidden,false);
+ r.el('closeSetup').click();assert.equal(r.run('window.setupSignal.aborted'),true);r.run('window.finishDownload()');await work;
+ assert.equal(r.run('settings.provider'),'codex');assert.equal(r.run('read("devicePrepared",false)'),false);assert.equal(r.el('setupDialog').open,false);r.close();
+});
+
+test('failed setup offers a smaller-model retry while preserving the saved context',async()=>{
+ const r=await renderer({prefs:{provider:'codex'}});
+ r.run("deviceModule={};deviceRuntime={prepare:async options=>{window.lastDownload=options.model;if(options.model!=='light')throw new Error('Not enough memory');window.ready=true;},status:()=>({answer:!!window.ready,speech:!!window.ready,model:window.lastDownload})};");
+ await r.el('aiShortcut').click();r.el('chooseLocal').click();r.el('simpleLocalModel').value='strong';await r.el('useLocal').click();assert.equal(r.el('localRecovery').hidden,false);
+ const profile=r.run('settings.profile');await r.el('retrySmallLocal').click();assert.equal(r.run('window.lastDownload'),'light');assert.equal(r.run('settings.profile'),profile);assert.equal(r.run('settings.provider'),'device');assert.equal(r.el('setupTestPanel').hidden,false);r.close();
+});
+
+test('unprepared AI cannot start a setup question, and choosing an audio source never starts recording',async()=>{
+ const r=await renderer({prefs:{provider:'device'}});await r.el('aiShortcut').click();r.el('setupSteptest').click();
+ assert.equal(r.el('trySetupQuestion').disabled,true);assert.equal(r.el('trySetupVoice').disabled,true);r.el('trySetupQuestion').click();assert.equal(r.run('connected'),false);
+ r.el('setupAudioSource').value='mic';r.el('setupAudioSource').onchange();assert.equal(r.run('settings.source'),'mic');assert.equal(r.run('connected'),false);assert.equal(r.run('read("source","")'),'mic');r.close();
+});
+
+test('opening AI setup cancels background warmup and removes the stale loading notice',async()=>{
+ const r=await renderer();r.run("warmAbort=new AbortController();window.warmSignal=warmAbort.signal;notice('Loading your saved local AI…');");
+ await r.el('aiShortcut').click();assert.equal(r.run('window.warmSignal.aborted'),true);assert.equal(r.el('notice').textContent,'');assert.equal(r.run('connected'),false);r.close();
+});
+
+test('invalid saved setup steps recover to context instead of a blank screen',async()=>{
+ const r=await renderer({prefs:{provider:'device',setupStep:'invalid'}});await r.run("personalSetup.open('invalid')");assert.equal(r.el('setupContextPanel').hidden,false);assert.equal(r.el('setupAIPanel').hidden,true);r.el('closeSetup').click();r.close();
 });
