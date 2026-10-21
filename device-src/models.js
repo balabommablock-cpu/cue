@@ -3,28 +3,38 @@ export const MODELS = {
   balanced:{id:'Qwen3-4B-q4f16_1-MLC',name:'Qwen3 · 4 billion parameters',download:'about 2.5 GB',memory:'about 4 GB of available graphics memory'},
   light:{id:'Qwen3-1.7B-q4f16_1-MLC',name:'Qwen3 · 1.7 billion parameters',download:'about 1.1 GB',memory:'about 2 GB of available graphics memory'},
 };
-export async function checkDevice() {
-  if (!navigator.gpu) return {ok:false,message:'Local AI could not access WebGPU. Reopen Cue after updating macOS.'};
-  const adapter = await navigator.gpu.requestAdapter();
+export async function checkDevice({gpu=navigator.gpu,storage=navigator.storage}={}) {
+  if (!gpu) return {ok:false,message:'Local AI could not access WebGPU. Update your system and graphics drivers, then reopen Cue. You can also choose a cloud AI.'};
+  const adapter = await gpu.requestAdapter().catch(()=>null);
   if (!adapter) return {ok:false,message:'Cue cannot access a compatible graphics processor. Close other graphics-heavy apps and restart Cue.'};
   if (!adapter.features.has('shader-f16')) return {ok:false,message:'Your graphics processor does not support the local models in this preview. Another computer may be needed.'};
-  const estimate=await navigator.storage?.estimate?.().catch(()=>({}));
-  return {ok:true,message:'Your Mac supports local AI. Setup checks the model by generating a real answer after download.',available:estimate?.quota?estimate.quota-(estimate.usage||0):null};
+  const estimate=await storage?.estimate?.().catch(()=>({}));
+  return {ok:true,message:'A compatible graphics processor is available. Setup tests an answer after download.',available:estimate?.quota?estimate.quota-(estimate.usage||0):null};
 }
 export class LocalBrain {
-  constructor(onProgress){this.onProgress=onProgress;this.worker=null;this.engine=null;this.ready=false;this.loading=false;this.revision=0;}
+  constructor(onProgress,{createEngine,createWorker}={}){this.onProgress=onProgress;this.createEngine=createEngine;this.createWorker=createWorker;this.worker=null;this.engine=null;this.ready=false;this.loading=false;this.revision=0;}
   async load(choice='balanced') {
     if(this.loading)throw new Error('AI setup is already running.');
+    if(!Object.hasOwn(MODELS,choice))throw new Error('Choose one of the available local models.');
     this.dispose();const revision=++this.revision;this.loading=true;let timer;
     try {
-      const {CreateWebWorkerMLCEngine}=await import('@mlc-ai/web-llm');
+      const CreateWebWorkerMLCEngine=this.createEngine||(await import('@mlc-ai/web-llm')).CreateWebWorkerMLCEngine;
       if(revision!==this.revision)throw new Error('Setup cancelled.');
-      this.worker=new Worker(new URL('./llm.worker.js',import.meta.url),{type:'module'});
+      this.worker=this.createWorker?this.createWorker():new Worker(new URL('./llm.worker.js',import.meta.url),{type:'module'});
       const interrupted=new Promise((_,reject)=>{this.cancel=reject;timer=setTimeout(()=>reject(new Error('Model setup took too long. Check the connection and retry.')),15*60*1000);});
       const engine=await Promise.race([CreateWebWorkerMLCEngine(this.worker,MODELS[choice].id,{initProgressCallback:p=>{if(revision===this.revision)this.onProgress?.(p);}}, {context_window_size:4096}),interrupted]);
       if(revision!==this.revision){this.worker?.terminate();throw new Error('Setup cancelled.');}
-      this.engine=engine;this.ready=true;this.choice=choice;
-    } finally {clearTimeout(timer);if(revision===this.revision){this.loading=false;this.cancel=null;}}
+      this.engine=engine;
+      this.onProgress?.({stage:'verify',text:'Download ready. Testing a real answer on your device…'});
+      let verifyTimer;
+      try {
+        const result=await Promise.race([engine.chat.completions.create({messages:[{role:'user',content:'Reply with only the word Ready. /no_think'}],stream:false,temperature:0,max_tokens:24,extra_body:{enable_thinking:false}}),interrupted,new Promise((_,reject)=>{verifyTimer=setTimeout(()=>reject(new Error('The model downloaded but could not answer in time. Try the smaller model or choose cloud AI.')),90000);})]);
+        if(!String(result.choices?.[0]?.message?.content||'').replace(/<think>[\s\S]*?<\/think>/g,'').trim())throw new Error('The model loaded but returned no answer. Try the smaller model or choose cloud AI.');
+      } finally {clearTimeout(verifyTimer);}
+      if(revision!==this.revision)throw new Error('Setup cancelled.');
+      this.ready=true;this.choice=choice;
+    } catch(error) {if(revision===this.revision)this.dispose();throw error;}
+    finally {clearTimeout(timer);if(revision===this.revision){this.loading=false;this.cancel=null;}}
   }
   async answer(messages,onText) {
     if(!this.ready)throw new Error('Set up local AI first.');

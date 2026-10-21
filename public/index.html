@@ -112,7 +112,8 @@
     <div id="setupLocal" class="setup-card" hidden>
       <p id="localCompatibility" class="help">Checking this Mac…</p>
       <label class="field-label" for="simpleLocalModel">Choose a download</label><select id="simpleLocalModel"><option value="strong">Stronger · about 5 GB · best with 24 GB memory</option><option value="balanced">Balanced · about 2.5 GB · good for a 16 GB Mac</option><option value="light">Smallest · about 1.1 GB · simpler answers</option></select>
-      <p class="help">Qwen3 writes answers. Whisper listens in English. Local AI can make mistakes; personal questions and calculations take longer. Your files and audio stay on this Mac.</p>
+      <p class="help">Qwen3 writes answers. Whisper listens in English and adds about 150 MB. No separate app, account or Terminal needed. Setup downloads the files, then tests a real answer.</p>
+      <p class="help">Internet is needed for setup. Local inference stays on this Mac. Smaller models make more mistakes; difficult questions can be slower. Keep a few GB of extra space free. Clearing Cue’s data removes downloaded models.</p>
       <progress id="simpleDeviceDownload" max="1" value="0" hidden></progress><p id="simpleDeviceProgress" class="help" role="status">One download, then Cue remembers it.</p><div class="setup-tools"><button id="useLocal" class="primary">Download &amp; use local AI</button><button id="cancelLocalSetup" class="quiet" hidden>Cancel download</button></div>
     </div>
   </section>

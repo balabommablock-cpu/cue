@@ -19,3 +19,16 @@ jobs:
       - run: npm test
       - run: npm run audit:public
       - run: npm audit --audit-level=high
+  windows-core:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify portable AI and renderer logic, without claiming desktop support
+        run: node --test test/device-runtime.test.mjs test/device-context.test.mjs test/device-models.test.mjs test/api-flow.test.mjs test/model-options.test.mjs test/setup-flow.test.mjs

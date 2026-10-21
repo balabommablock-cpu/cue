@@ -14,3 +14,17 @@ test('saved ChatGPT account selector sends the selected id before rerendering',a
 });
 
 test('the full page has unique control IDs, including separate API and Realtime key fields',async()=>{const {readFile}=await import('node:fs/promises');const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);assert.ok(ids.includes('providerApiKey'));assert.ok(ids.includes('apiKey'));});
+
+test('one local setup click prepares speech and the chosen model before switching provider',async()=>{
+ const r=await renderer({prefs:{provider:'codex'}});
+ r.run("deviceModule={}; deviceRuntime={prepare:async options=>{window.prepared=options;window.localReady=true;},status:()=>({answer:!!window.localReady,speech:!!window.localReady,model:'light'})};");
+ await r.el('aiShortcut').click();r.el('chooseLocal').click();r.el('simpleLocalModel').value='light';
+ await r.el('useLocal').click();assert.deepEqual(JSON.parse(r.run('JSON.stringify(window.prepared)')),{model:'light',audio:true});assert.equal(r.run('settings.provider'),'device');assert.equal(r.el('setupTestPanel').hidden,false);assert.equal(r.run('read("devicePrepared",false)'),true);assert.equal(r.run('connected'),false);r.close();
+});
+
+test('failed local setup leaves the working provider selected and shows the error',async()=>{
+ const r=await renderer({prefs:{provider:'codex'}});
+ r.run("deviceModule={}; deviceRuntime={prepare:async()=>{throw new Error('Not enough graphics memory. Try the smaller model.');},status:()=>({answer:false,speech:false})};");
+ await r.el('aiShortcut').click();r.el('chooseLocal').click();await r.el('useLocal').click();
+ assert.equal(r.run('settings.provider'),'codex');assert.match(r.el('setupMessage').textContent,/smaller model/);assert.equal(r.el('useLocal').disabled,false);assert.equal(r.el('simpleLocalModel').disabled,false);assert.equal(r.run('read("devicePrepared",false)'),false);r.close();
+});

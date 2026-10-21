@@ -38,6 +38,8 @@ Cue normally keeps your data in `~/Library/Application Support/Cue`. An early Co
 | Codex, advanced | Speech recognition and context selection | Selected text and reference facts go through your own installed Codex connection |
 | OpenAI Realtime, advanced | Audio capture | Selected audio is sent to OpenAI using an API key you provide |
 
+The local download button installs Qwen3 plus Whisper, reuses cached files on retry, and verifies a real generated answer before reporting ready. No Ollama, Python installation or Terminal command is needed for local mode. See the [local model and hardware guide](docs/LOCAL_AI.md).
+
 Local models are less capable than leading cloud models. Calculations and personal questions can take longer. There is no sub-second guarantee. ChatGPT plan access is subject to eligibility and the account's current limits; it does not read ChatGPT chat history. AI coaching and practice feedback currently require Codex.
 
 ## API keys and model selection
@@ -59,6 +61,10 @@ Protocol references: [OpenAI models](https://developers.openai.com/api/reference
 The optional **Share View** creates a presentation window whose source stream excludes Cue. Select **Cue Share View — share this window** in the meeting's window picker. Independently sharing the whole display can expose Cue. Check the receiving participant's picture before relying on a setup.
 
 [Capture boundaries and a reproducible test](docs/SCREEN_SHARING.md) explain what this feature does and what remains unverified. This project does not defeat proctoring, OS security, process inspection or browser restrictions.
+
+## Windows
+
+The current release is **Mac only**. Windows can run the portable web/model logic in principle, but the desktop release, Share View and hold-to-open launcher have not been ported or validated. Windows CI checks portable code only; it does not certify audio, GPU inference, capture behavior or an installer. [Windows assessment and remaining work](docs/WINDOWS.md).
 
 ## Build from source
 

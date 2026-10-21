@@ -13,7 +13,7 @@ function installChatGPT({app,win,ipcMain,safeStorage,shell,origin}){
     if(!permitted(e))return {ok:false,error:{code:'untrusted',message:'Open Cue to continue.'}};
     try{return {ok:true,value:await fn(...args)};}catch(e){const {publicError}=await import('./chatgpt-auth.bundle.mjs');return {ok:false,error:publicError(e)};}
   });
-  handle('device-info',()=>({platform:process.platform,arch:process.arch,memoryGB:Math.round(os.totalmem()/1024**3),recommendedModel:os.totalmem()>=24*1024**3?'strong':'balanced'}));
+  handle('device-info',()=>({platform:process.platform,arch:process.arch,memoryGB:Math.round(os.totalmem()/1024**3),recommendedModel:os.totalmem()>=24*1024**3?'strong':os.totalmem()>=16*1024**3?'balanced':'light'}));
   handle('account-status',async()=> (await client()).status());
   handle('account-signin',async options=>(await client()).signIn({newAccount:options?.newAccount===true,reconsent:options?.reconsent===true}));
   handle('account-cancel',async()=>{connection?.cancelSignIn();return true;});
