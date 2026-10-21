@@ -2,6 +2,8 @@
 
 In the Mac app, open **Your AI → On this Mac → Download & use local AI**. One button downloads the selected answer model and Whisper speech recognition, then checks a real answer. No account, API key, Python, Ollama or Terminal setup is required. The public GitHub release and a source build use the same flow.
 
+![Local AI setup after a successful model download](images/local-ai.png)
+
 ## Available models
 
 | Choice | Exact model | Approximate download | Graphics-memory estimate from WebLLM | Conservative Mac recommendation |

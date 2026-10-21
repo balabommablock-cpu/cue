@@ -1,10 +1,10 @@
-# Cue 1.31.0 validation
+# Cue 1.32.0 validation
 
 Checked on 21 October 2026. These are engineering checks, not a guarantee about every device, AI answer or meeting provider.
 
 | Check | Result |
 | --- | --- |
-| Automated Node tests | 430 passed, no failures or skipped tests |
+| Automated Node tests | 437 passed, no failures or skipped tests |
 | npm dependency audit | No reported vulnerabilities at publication |
 | Public defaults | Empty profile, no background records or sources, first-run setup enabled |
 | Data isolation | Existing Cue identity retained; Community-only folders selected without copying or mixing accounts |
@@ -12,10 +12,15 @@ Checked on 21 October 2026. These are engineering checks, not a guarantee about 
 | Packaged runtime inspection | No account, environment, owner-dashboard, development dependency or test files |
 | Mac package | Apple silicon build; deep, strict ad-hoc signature verified |
 | API provider tests | Encrypted persistence, concurrent key changes, removal, permission failures, model pagination, exact custom IDs, Responses/Chat compatibility, Claude streaming, interruption, truncation and credential IPC guards |
-| Native smoke test | Fresh onboarding, memory-based local-model recommendation, disconnected account state |
+| Native smoke test | Installed Mac app retains saved context and ChatGPT account; API key field and invalid-key handling checked |
+| Real local inference | Clean UI profile downloaded Qwen3 1.7B plus Whisper; generated self-test, a normal answer, correct ₹250 × 12 arithmetic and a missing-history response that did not invent employers on Apple M4 Max, 36 GB RAM |
+| Cached startup | Local model and speech reloaded from the clean profile cache and reported ready, with recording off |
+| Windows portable checks | GitHub Actions Windows runner installed dependencies, built assets and passed selected model/runtime/renderer tests; no Windows desktop or GPU certification |
 | UI checks | Setup without context, prewritten example, reading presets, valid import and unsupported-field rejection |
 | Capture behavior | Existing fail-closed controller tests pass; no new cross-provider receiving-device certification |
 
 The UI example is explicitly prewritten. It is not an AI speed or quality benchmark. OpenAI/Claude API requests were verified with synthetic transport fixtures, not billed live API credentials. The release does not certify the provider’s model quality or latency. Speech recognition and model responses still require a live check on the recipient's Mac.
 
 The Mac preview is not Developer ID signed or notarized. No Windows build is supplied. Share View does not promise universal invisibility; see [capture boundaries](SCREEN_SHARING.md).
+
+Observed UI time to first text in this small Qwen3 1.7B check varied from 0.2 seconds for a general or missing-context answer to 4.4 seconds for the arithmetic prompt. These are individual observations on one Mac, not a latency distribution or device guarantee. Tests used the built UI in a clean browser profile; physical speech accuracy and a fresh recipient Mac remain separate checks.
