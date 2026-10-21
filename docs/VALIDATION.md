@@ -1,4 +1,4 @@
-# Community 1.30.0 validation
+# Community 1.30.1 validation
 
 Checked on 21 October 2026. These are engineering checks, not a guarantee about every device, AI answer or meeting provider.
 
