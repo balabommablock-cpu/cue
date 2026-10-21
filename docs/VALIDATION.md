@@ -4,7 +4,7 @@ Checked on 21 October 2026. These are engineering checks, not a guarantee about 
 
 | Check | Result |
 | --- | --- |
-| Automated Node tests | 446 passed, no failures or skipped tests |
+| Automated Node tests | 447 passed, no failures or skipped tests |
 | npm dependency audit | No reported vulnerabilities at publication |
 | Public defaults | Empty profile, no background records or sources, first-run setup enabled |
 | Data isolation | Existing Cue identity retained; Community-only folders selected without copying or mixing accounts |
@@ -27,3 +27,5 @@ The Mac preview is not Developer ID signed or notarized. No Windows build is sup
 Observed UI time to first text in this small Qwen3 1.7B check varied from 0.2 seconds for a general or missing-context answer to 4.4 seconds for the arithmetic prompt. These are individual observations on one Mac, not a latency distribution or device guarantee. Tests used the built UI in a clean browser profile; physical speech accuracy and a fresh recipient Mac remain separate checks.
 
 The new sample-voice entry point was checked in the real built UI using cached Qwen3 1.7B and Whisper: the included recording was transcribed and answered, with no microphone or system capture. The displayed 2.7 seconds to first answer text was one observation, not a latency guarantee. The sample test does not certify physical audio or macOS permissions.
+
+Fresh first-use browser checks confirmed setup resumes at the saved AI step, choices stay collapsed until requested, navigation is disabled during a real download, and both closing and cancelling stop setup without marking a model ready. A regression test covers the asynchronous cancellation badge refresh.

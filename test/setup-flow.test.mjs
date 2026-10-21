@@ -18,7 +18,7 @@ test('the full page has unique control IDs, including separate API and Realtime 
 test('one local setup click prepares speech and the chosen model before switching provider',async()=>{
  const r=await renderer({prefs:{provider:'codex'}});
  r.run("deviceModule={}; deviceRuntime={prepare:async options=>{window.prepared=options;window.localReady=true;},status:()=>({answer:!!window.localReady,speech:!!window.localReady,model:'light'})};");
- await r.el('aiShortcut').click();r.el('chooseLocal').click();r.el('simpleLocalModel').value='light';
+ await r.el('aiShortcut').click();assert.equal(r.el('aiChoices').open,false);r.el('chooseLocal').click();r.el('simpleLocalModel').value='light';
  await r.el('useLocal').click();assert.deepEqual(JSON.parse(r.run('JSON.stringify(window.prepared)')),{model:'light',audio:true});assert.equal(r.run('settings.provider'),'device');assert.equal(r.el('setupTestPanel').hidden,false);assert.equal(r.run('read("devicePrepared",false)'),true);assert.equal(r.run('connected'),false);r.close();
 });
 
@@ -58,4 +58,11 @@ test('opening AI setup cancels background warmup and removes the stale loading n
 
 test('invalid saved setup steps recover to context instead of a blank screen',async()=>{
  const r=await renderer({prefs:{provider:'device',setupStep:'invalid'}});await r.run("personalSetup.open('invalid')");assert.equal(r.el('setupContextPanel').hidden,false);assert.equal(r.el('setupAIPanel').hidden,true);r.el('closeSetup').click();r.close();
+});
+
+test('cancelled local setup clears the preparing badge after an asynchronous cleanup',async()=>{
+ const r=await renderer({prefs:{provider:'device'}});
+ r.run("deviceModule={};window.pendingSetup=false;deviceRuntime={prepare:async()=>{window.pendingSetup=true;await new Promise(resolve=>window.endPending=resolve);window.pendingSetup=false;},status:()=>({answer:false,loading:window.pendingSetup,model:'light'})};");
+ await r.el('aiShortcut').click();const work=r.el('useLocal').click();await tick();r.el('closeSetup').click();r.run('window.endPending()');await work;
+ assert.doesNotMatch(r.el('aiShortcut').textContent,/preparing/);assert.match(r.el('aiShortcut').textContent,/set up/);r.close();
 });

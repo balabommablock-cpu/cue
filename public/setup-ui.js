@@ -54,19 +54,19 @@ export function setupUI({$,native,read,write,getSettings,saveContext,chooseProvi
   async function open(which='context'){
     if(!['context','ai','test'].includes(which))which='context';
     stopListening();$('simpleLocalModel').value=getSettings().deviceModel;$('profile').value=getSettings().profile;selected=['device','openai','anthropic'].includes(getSettings().provider)?getSettings().provider:'chatgpt';apiPanel.select(selected);
-    $('aiChoices').open=!read('setupComplete',false);$('setupAudioSource').value=getSettings().source;page(which);$('setupDialog').showModal();
+    $('aiChoices').open=false;$('setupAudioSource').value=getSettings().source;page(which);$('setupDialog').showModal();
     if(native?.deviceInfo)try{info=unwrap(await native.deviceInfo());if(!read('devicePrepared',false)&&!read('deviceChoiceMade',false))$('simpleLocalModel').value=info.recommendedModel;render();}catch{say('Could not read this Mac’s memory. Start with the smallest model.');}
     try{await refreshAccount();await apiPanel.refresh();if(step==='ai'&&['openai','anthropic'].includes(selected))void apiPanel.loadModels(selected);}catch(e){say(e.message);}
   }
   function cleanup(){
-    operation++;aborter?.abort();aborter=null;busy=false;if(state.connecting)void native?.accountCancel?.();state.connecting=false;
+    operation++;if(aborter){aborter.abort();$('simpleDeviceDownload').hidden=true;$('simpleDeviceProgress').textContent='Setup stopped. Completed files stay cached for retry.';}aborter=null;busy=false;if(state.connecting)void native?.accountCancel?.();state.connecting=false;
     apiPanel.close();$('profile').value=getSettings().profile;render();
   }
   async function task(work,success,{download=false}={}){
     if(blocked())return;const token=++operation;busy=true;aborter=download?new AbortController():null;const signal=aborter?.signal;render();
     try{const result=await work(signal);if(token===operation&&!signal?.aborted)success?.(result);}
-    catch(e){if(token===operation){localFailure=download&&selected==='device'&&!signal?.aborted;say(signal?.aborted?'Download cancelled. Completed files stay cached for retry.':e.message);}}
-    finally{if(token===operation){busy=false;aborter=null;state.connecting=false;render();}}
+    catch(e){if(token===operation){localFailure=download&&selected==='device'&&!signal?.aborted;if(download){$('simpleDeviceDownload').hidden=true;$('simpleDeviceProgress').textContent=signal?.aborted?'Setup stopped. Completed files stay cached for retry.':'Setup could not finish. Try again or choose another AI.';}say(signal?.aborted?'Download cancelled. Completed files stay cached for retry.':e.message);}}
+    finally{if(token===operation){busy=false;aborter=null;state.connecting=false;render();}else home();}
   }
   $('contextShortcut').onclick=()=>void open('context');$('aiShortcut').onclick=()=>void open('ai');
   $('closeSetup').onclick=()=>{cleanup();$('setupDialog').close();};$('setupDialog').addEventListener('cancel',cleanup);
