@@ -12,7 +12,7 @@ Checked on 21 October 2026. These are engineering checks, not a guarantee about 
 | Packaged runtime inspection | No account, environment, owner-dashboard, development dependency or test files |
 | Mac package | Apple silicon ZIP and DMG; read-only DMG mount contains a signed Cue app, Applications shortcut and installation help; deep, strict ad-hoc signature verified |
 | API provider tests | Encrypted persistence, concurrent key changes, removal, permission failures, model pagination, exact custom IDs, Responses/Chat compatibility, Claude streaming, interruption, truncation and credential IPC guards |
-| Native smoke test | Installed Mac app retains saved context and ChatGPT account; API key field and invalid-key handling checked |
+| Native smoke test | Prior 1.31.0 checks retained context/account and verified invalid-key handling. Current 1.33.0 was installed and its signature verified while the Mac was locked; the reopened native UI check is pending unlock. |
 | Real local inference | Clean UI profile downloaded Qwen3 1.7B plus Whisper; generated self-test, a normal answer, correct ₹250 × 12 arithmetic and a missing-history response that did not invent employers on Apple M4 Max, 36 GB RAM |
 | Installed native local AI | Distributed 1.32.0 app loaded Qwen3 8B, passed the self-test and generated a typed answer; UI reported 0.8 seconds to first text in that single observation |
 | Cached startup | Local model and speech reloaded from the clean profile cache and reported ready, with recording off |
