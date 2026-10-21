@@ -14,6 +14,7 @@ Checked on 21 October 2026. These are engineering checks, not a guarantee about 
 | API provider tests | Encrypted persistence, concurrent key changes, removal, permission failures, model pagination, exact custom IDs, Responses/Chat compatibility, Claude streaming, interruption, truncation and credential IPC guards |
 | Native smoke test | Installed Mac app retains saved context and ChatGPT account; API key field and invalid-key handling checked |
 | Real local inference | Clean UI profile downloaded Qwen3 1.7B plus Whisper; generated self-test, a normal answer, correct ₹250 × 12 arithmetic and a missing-history response that did not invent employers on Apple M4 Max, 36 GB RAM |
+| Installed native local AI | Distributed 1.32.0 app loaded Qwen3 8B, passed the self-test and generated a typed answer; UI reported 0.8 seconds to first text in that single observation |
 | Cached startup | Local model and speech reloaded from the clean profile cache and reported ready, with recording off |
 | Windows portable checks | GitHub Actions Windows runner installed dependencies, built assets and passed selected model/runtime/renderer tests; no Windows desktop or GPU certification |
 | UI checks | Setup without context, prewritten example, reading presets, valid import and unsupported-field rejection |
