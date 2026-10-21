@@ -2,7 +2,7 @@
 
 A small, translucent desktop assistant that helps you stay in a conversation. Bring your own context, choose local AI, your own ChatGPT account, or an OpenAI/Claude API key, and get concise cues you can read at a glance.
 
-**[Download the Mac preview](https://cue-personal.netlify.app/)** · [Local AI guide](docs/LOCAL_AI.md)
+**[Download the Mac preview](https://cue-personal.netlify.app/)** · [First-use guide · no Terminal needed](docs/GET_STARTED.md) · [Local AI guide](docs/LOCAL_AI.md)
 
 A fresh installation starts with **no biography, saved account or previous user's notes**. Existing Cue users keep their own local account, notes and cache when upgrading. Use assistance where the participants or assessment rules permit it.
 
