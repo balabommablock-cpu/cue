@@ -38,3 +38,12 @@ test('concurrent requests refresh once; request constraints and completed stream
 test('late usage error does not mark a streamed partial answer complete',async t=>{const f=await fixture(t,{stream:[{type:'response.output_text.delta',delta:'Partial'},{type:'response.failed',response:{error:{code:'subscription_sharing_usage_limit_exceeded'}}}]});await f.signin();await assert.rejects(f.client.answer({model:'test',messages:[{role:'user',content:'Hi'}]},()=>{}),{code:'usage_limit'});});
 test('truncated streams fail; local signout clears credentials and reports failed revocation',async t=>{const f=await fixture(t,{stream:[{type:'response.output_text.delta',delta:'Partial'}],revokeFail:true});await f.signin();await assert.rejects(f.client.answer({model:'test',messages:[{role:'user',content:'Hi'}]},()=>{}),{code:'incomplete'});const result=await f.client.disconnect();assert.equal(result.revoked,false);assert.equal(result.sharing,false);assert.equal(result.accounts.length,1);await assert.rejects(f.client.models(),{code:'sign_in_required'});});
 test('sign-in refuses unprotected credential storage',async t=>{const directory=await mkdtemp(join(tmpdir(),'cue-unsafe-test-'));t.after(()=>rm(directory,{recursive:true,force:true}));await assert.rejects(createChatGPTConnection({directory,encryption:{isAvailable:()=>false},openBrowser:()=>{}}),{code:'storage_unavailable'});});
+test('live Sol and Astra requests explicitly use low reasoning without changing the selected model',async t=>{
+ const f=await fixture(t);await f.signin();
+ for(const model of ['gpt-6.1-sol','gpt-6-astra']){
+  await f.client.answer({model,messages:[{role:'user',content:'Give one short answer.'}]},()=>{});
+  const payload=JSON.parse(f.calls.filter(c=>c.url.endsWith('/responses')).at(-1).body);
+  assert.equal(payload.model,model);assert.deepEqual(payload.reasoning,{effort:'low'});
+  assert.equal(payload.store,false);assert.equal(payload.stream,true);
+ }
+});

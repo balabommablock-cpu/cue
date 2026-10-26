@@ -35,7 +35,11 @@ export function sameUtterance(a,b){
   return left.join(' ')===right.join(' ');
 }
 
-export function explicitQuestion(text){if(/^(?:and then|anything else|the result|your role)[?.!]?$/i.test(text.trim()))return true;return /^(?:ok(?:ay)?[,.]?\s*|so[,.]?\s*|(?:and|but|wait|sorry)[,.]?\s*)?(?:please\s+)?(?:(?:what|why|how|when|where|who|which)\b|(?:can|could|would|will)\s+you\b|(?:did|does|do|is|are|was|were|has|have)\b|give\s+me\b|tell\s+me\b|walk\s+me\b|(?:describe|explain|compare|define|solve|calculate|translate|write|rewrite|draft|debug|summari[sz]e|derive|list|outline|design)\b)/i.test(text.trim());}
+export function explicitQuestion(text){
+  const clean=text.trim().replaceAll('’',"'").replace(/^(?:(?:ok(?:ay)?|yes|yeah|right|sure|great|good|thanks|thank you|I see|got it|understood|(?:that's|that is) interesting|that makes sense)[,.!;:]?\s+)+/i,'');
+  if(/^(?:and then|anything else|the result|your role)[?.!]?$/i.test(clean))return true;
+  return /^(?:so[,.]?\s*|(?:and|but|wait|sorry)[,.]?\s*)?(?:please\s+)?(?:(?:what|why|how|when|where|who|which)\b|(?:can|could|would|will)\s+you\b|(?:did|does|do|is|are|was|were|has|have)\b|give\s+me\b|tell\s+me\b|walk\s+me\b|(?:describe|explain|compare|define|solve|calculate|translate|write|rewrite|draft|debug|summari[sz]e|derive|list|outline|design)\b)/i.test(clean);
+}
 
 // A phone and the candidate share one physical microphone. These are intent
 // hints, not speaker identification. Ambiguous speech goes to the model's turn
@@ -58,11 +62,19 @@ export function sharedMicIntent(text,{answer='',cursor=0,turnOpen=false}={}){
 export function turnRoute({text,source,hasAnswer,forced=false,dual=false}){
   if(forced)return 'answer';
   const clean=words(text).map(t=>t.word).join(' ');
-  if(/^(?:thank you(?: very much)?|thanks(?: a lot)?|okay|ok|yes|yeah|no|sure|right|got it|understood|that makes sense|bye|goodbye|mm hmm|uh huh)$/.test(clean))return 'ack';
+  if(/^(?:(?:thank you(?: very much)?|thanks(?: a lot)?|okay|ok|yes|yeah|no|sure|right|absolutely|great|good|got it|understood|that makes sense|bye|goodbye|mm hmm|uh huh)(?:\s+|$))+$/.test(clean))return 'ack';
   // In this two-input product the microphone belongs to the candidate. Keep
   // their normal response as context rather than asking a model to rewrite it.
   if(source==='mic'&&dual)return 'context';
+  if(hasAnswer&&source==='system'&&/^(?:(?:thats|that is) (?:interesting|helpful|useful|good)|take your time|(?:i am|im) listening|go on|please continue|carry on|keep going)$/.test(clean))return 'context';
   return 'answer';
+}
+
+// Only confidently identified requests extend an existing interviewer turn.
+// Other speech uses the model's inline turn check, without inheriting a prior
+// question's "confirmed" flag merely because someone spoke after it.
+export function interviewerRequest(text){
+  return explicitQuestion(text)||!!questionReplacement(text,'system')||/^(?:(?:and|also|then|finally|plus)\b|(?:no[,;:]?\s+)?I (?:mean|meant)\b|specifically\b|in particular\b|to clarify\b|(?:assume|suppose|imagine)\b|(?:let's|let us) (?:focus|say|consider)\b|I(?:'d| would) like (?:you|to (?:know|hear|understand))\b|I (?:want|wanted) (?:you|to (?:know|hear|understand))\b|I'm (?:curious|interested)\b|you (?:said|mentioned|wrote)\b)/i.test(text.trim().replaceAll('’',"'"));
 }
 
 // Retractions discard the old question; ordinary follow-ups retain its context.

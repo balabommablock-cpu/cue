@@ -14,7 +14,7 @@ test('typing from idle starts a text-only connection and Stop restores the saved
  a.el('typeButton').click();a.el('typedQuestion').value='What did I personally own?';await a.el('typedForm').onsubmit({preventDefault(){}});await tick();
  const setup=JSON.parse(a.requests.find(r=>r.url==='/api/codex/check').init.body);
  assert.equal(setup.audio,false);assert.equal(setup.dual,false);assert.equal(a.run('settings.source'),'text');assert.equal(a.run('read("source")'),'both');
- assert.equal(a.el('questionBlock').hidden,false);assert.equal(a.el('welcome').hidden,false);
+ assert.equal(a.el('questionBlock').hidden,false);assert.equal(a.el('welcome').hidden,true);
  stream.send({type:'answer',text:'ANSWER: I owned product delivery.'});stream.send({type:'done'});stream.close();await tick();
  assert.equal(a.el('welcome').hidden,true);assert.equal(a.el('answerFrame').hidden,false);assert.equal(a.el('historyButton').hidden,false);
  a.run('stop()');assert.equal(a.run('settings.source'),'both');assert.equal(a.el('startButton').textContent,'Start listening');
@@ -47,12 +47,12 @@ test('one progress message replaces duplicate stage descriptions',()=>{
 test('a fresh Start clears the previous script but preserves it in answer history',async t=>{
  const a=await renderer({fetch:url=>url==='/api/answer'?new Response('{"type":"answer","text":"ANSWER: Earlier answer."}\n{"type":"done"}\n'):undefined});t.after(()=>a.close());
  await a.run('connect()');await a.run('localAnswer({question:"Earlier question?"})');a.run('stop()');await a.run('connect()');
- assert.equal(a.el('answer').textContent,'');assert.equal(a.el('welcome').hidden,false);assert.equal(a.el('questionBlock').hidden,true);
+ assert.equal(a.el('answer').textContent,'');assert.equal(a.el('welcome').hidden,true);assert.equal(a.el('questionBlock').hidden,true);
  assert.equal(a.run('answerArchive.length'),1);assert.equal(a.el('historyButton').hidden,false);
 });
 test('a preview is cleared when the real session starts',async t=>{
  const a=await renderer();t.after(()=>a.close());a.el('demoButton').click();assert.equal(a.el('welcome').hidden,true);await a.run('connect()');
- assert.equal(a.run('raw'),'');assert.equal(a.el('answerFrame').hidden,true);assert.equal(a.el('welcome').hidden,false);
+ assert.equal(a.run('raw'),'');assert.equal(a.el('answerFrame').hidden,true);assert.equal(a.el('welcome').hidden,true);
 });
 test('completed Realtime answers enter history while failed answers do not',async t=>{
  const a=await renderer();t.after(()=>a.close());

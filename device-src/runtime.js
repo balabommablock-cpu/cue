@@ -1,5 +1,6 @@
 import {LocalBrain,LocalSpeech,MODELS,checkDevice} from './models.js';
 import {makeMessages,EMPTY_PROFILE,visibleAnswer,looksLikeQuestion} from './context.mjs';
+import {formatSuggestion} from '../public/core.js';
 export {readDocument} from './import.js';
 export {MODELS};
 export {answerMessages} from './messages.mjs';
@@ -69,10 +70,10 @@ export function createRuntime({progress=()=>{},brainFactory=p=>new LocalBrain(p)
           const profile={...EMPTY_PROFILE,facts:String(data.profile||'').slice(0,20000),documents,style:data.style==='script'?'paragraph':'cues'};
           if(String(data.profile||'').length>20000&&documents.length<24)profile.documents.push({id:'additional-profile',title:'More personal context',text:String(data.profile).slice(20000,40000)});
           const history=(data.history||[]).filter(h=>!/^WAIT:/.test(h.answer)).map(h=>({...h,answer:h.answer.replace(/^ANSWER:\s*/, '')}));
-          const messages=makeMessages(question.slice(0,2500),profile,history);let result='';
+          const messages=makeMessages(question.slice(0,2500),profile,history,data.autoDetect);let result='';
           emit({type:'stage',step:'draft',text:'Thinking on this Mac…'});
-          await brain.answer(messages,raw=>{if(closed)return;result=visibleAnswer(raw);if(result.trim())emit({type:'answer',text:'ANSWER:\n'+result,streaming:true});});
-          if(!closed){if(!result.trim())throw new Error('No answer arrived. Retry the question.');emit({type:'answer',text:'ANSWER:\n'+result,streaming:false});emit({type:'done'});}
+          await brain.answer(messages,raw=>{if(closed)return;result=visibleAnswer(raw);if(result.trim())emit({type:'answer',text:formatSuggestion(result,data.autoDetect),streaming:true});});
+          if(!closed){if(!result.trim())throw new Error('No answer arrived. Retry the question.');emit({type:'answer',text:formatSuggestion(result,data.autoDetect),streaming:false});emit({type:'done'});}
         }).catch(e=>{if(!closed&&e.name!=='AbortError')emit({type:'error',message:e.message});}).finally(()=>{if(active===token)active='';finish();});
         serial=job;
       },cancel(){closed=true;signal?.removeEventListener('abort',abort);if(active===token)brain.interrupt();},

@@ -1,6 +1,6 @@
 {
   "name": "cue-desktop",
-  "version": "1.33.0",
+  "version": "1.33.1",
   "private": true,
   "type": "module",
   "description": "A personal desktop assistant with local AI, reviewed context and optional presentation sharing.",

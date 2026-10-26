@@ -11,6 +11,7 @@ export async function consumeAnswer(response,onEvent){
     if(['stage','question','answer'].includes(event.type)&&(typeof event.text!=='string'||event.text.length>12000))throw new Error('The answer exceeded its text limit or was unreadable.');
     if(event.type==='context'&&(!['general','scenario','follow-up','personal'].includes(event.mode)||!Number.isInteger(event.records)||event.records<0||event.records>500||!Number.isInteger(event.historyTurns)||event.historyTurns<0||event.historyTurns>2))throw new Error('The answer stream contained invalid context metadata.');
     if(event.type==='timing'&&(!event.phases||Object.values(event.phases).some(n=>typeof n!=='number'||!Number.isFinite(n)||n<0)))throw new Error('The answer stream contained invalid timing data.');
+    if(event.type==='timing'&&event.selection&&['model','serviceTier','effort'].some(key=>typeof event.selection[key]!=='string'||!event.selection[key]||event.selection[key].length>150))throw new Error('The answer stream contained invalid model metadata.');
     if(event.type==='error')throw new Error(typeof event.message==='string'?event.message:'The answer failed. Retry the question.');
     onEvent(event);if(['done','empty'].includes(event.type))complete=true;
   };

@@ -9,7 +9,7 @@ import {QuestionSegmenter,pcmBase64} from './local-audio.js';
 import {acquireAudio,inputLevel} from './audio-capture.js';
 import {dualAudio,sharedMicrophone,speechSourceFor,transcriptionLane,CrossSourceEcho} from './audio-routing.js';
 import {turnDecision} from './turn-decision.js';
-import {sameUtterance,explicitQuestion,turnRoute,questionReplacement,sharedMicIntent} from './reading.js';
+import {sameUtterance,explicitQuestion,turnRoute,questionReplacement,sharedMicIntent,interviewerRequest} from './reading.js';
 import {SpeechPipeline,transcribeRequest} from './speech-pipeline.js';
 import {VoiceReader} from './reader-ui.js';
 import {PendingTurns} from './pending-turns.js';
@@ -180,7 +180,7 @@ function refreshView(){
   const hasAnswer=!!parseResponse(raw).answer.trim();
   document.body.setAttribute('data-session',connecting?'connecting':connected?'live':'idle');
   document.body.classList.toggle('has-answer',hasAnswer);
-  $('welcome').hidden=hasAnswer;$('answerFrame').hidden=!hasAnswer;
+  $('welcome').hidden=hasAnswer||connecting||connected;$('answerFrame').hidden=!hasAnswer;
   $('questionBlock').hidden=!hasAnswer&&!lastHeardQuestion;
   $('readingBar').hidden=!(hasAnswer&&connected||readyAnswer||retryInput);
   $('historyButton').hidden=!answerArchive.length;
@@ -429,10 +429,10 @@ async function localAnswer(input){
   if(input.question)showIncomingQuestion(input.question);
   startAt=performance.now();status(input.question?'Preparing answer…':'Transcribing…','live');flow.set(input.question?'match':'transcribe',input.question?'Reading your question':'Turning speech into text');firstTextAt=0;syncArchive();
   retryInput=null;$('retryAnswer').hidden=true;
-  let q=input.question||'',draft='',displayStarted=false,deferred=false,completed=false,timedOut=false;
+  const bufferedFollowup=!!parseResponse(raw).answer.trim();
+  let q=input.question||'',draft='',displayStarted=false,deferred=bufferedFollowup,completed=false,timedOut=false;
   job.restore=()=>{coach.restore(previousCoach,{running:connected&&!paused});lastHeardQuestion=previous.heardQuestion;$('incomingQuestionBlock').hidden=true;$('question').textContent=previous.question;$('questionLabel').textContent=previous.label;refreshView();if(!displayStarted)return;reader.stop();raw=previous.raw;render();$('question').textContent=previous.question;$('questionLabel').textContent=previous.label;$('answerFrame').scrollTop=previous.scroll;reader.cursor=previous.cursor;$('answer').classList.remove('streaming');displayStarted=false;};
   const timeout=setTimeout(()=>{timedOut=true;controller.abort();},30000);
-  const slow=setTimeout(()=>{if(mine===generation&&localBusy&&!job.superseded)notice('Still working on this question. Your current answer stays available.');},12000);
   try{
     const data=scoped({...input,requestId:job.id,autoDetect,profile:effectiveProfile(),style:settings.style,answerModel:settings.answerModel,answerSpeed:settings.answerSpeed,history:localHistory});
     const r=apiProvider()?await cloudApiAnswer(data,controller.signal):settings.provider==='chatgpt'?await chatGPTAnswer(data,controller.signal):settings.provider==='device'?(await localDevice()).answerResponse({...data,knowledge:background},controller.signal):await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json','X-Cue-Client':'1'},body:JSON.stringify(data),signal:controller.signal});
@@ -464,7 +464,7 @@ async function localAnswer(input){
     if(completed){
       if(turnDecision(draft)==='answer'){
         answerArchive.push({question:q,raw:draft});archiveIndex-=Math.max(0,answerArchive.length-12);answerArchive=answerArchive.slice(-12);
-        if(deferred){readyAnswer={question:q,raw:draft,requestedAt:input.speechEndedAt??startAt,fromSpeech:input.speechEndedAt!==undefined};$('showReadyAnswer').hidden=false;if(!$('incomingQuestionBlock').hidden)$('incomingQuestionLabel').textContent='NEXT ANSWER READY';if(!candidateSpeaking&&!reader.held&&!paused&&!editingQuestion)showReadyAnswer();}
+        if(deferred){readyAnswer={question:q,raw:draft,requestedAt:input.speechEndedAt??startAt,fromSpeech:input.speechEndedAt!==undefined};$('showReadyAnswer').hidden=false;if(!$('incomingQuestionBlock').hidden)$('incomingQuestionLabel').textContent='NEXT ANSWER READY';if((input.waitForComplete||input.showImmediately||!candidateSpeaking&&!reader.held)&&!paused&&!editingQuestion)showReadyAnswer();}
         else{archiveIndex=answerArchive.length-1;syncArchive();}
       }
       localHistory.push({question:q,answer:draft.slice(0,6000)});localHistory=localHistory.slice(-6);
@@ -478,7 +478,7 @@ async function localAnswer(input){
       notice((timedOut?'The answer timed out. Retry when your connection is ready.':e.message)+(previous.raw?' Your previous answer is still here.':''));status('Answer failed','error');flow.set('error',e.message);
     }
   }finally{
-    clearTimeout(timeout);clearTimeout(slow);
+    clearTimeout(timeout);
     if(mine===generation&&localJob===job){$('answer').classList.remove('streaming');localBusy=false;localAbort=null;localJob=null;syncArchive();
       if(!job.superseded&&pendingQuestions.length&&settings.auto&&!paused&&!readyAnswer&&!editingQuestion)void localAnswer(pendingQuestions.take());
       else if(!job.superseded&&pendingPCM&&settings.auto&&!paused&&!editingQuestion){const pcm=pendingPCM;pendingPCM=null;void localAnswer({pcm});}
@@ -573,8 +573,8 @@ function onSpeechText({text,source,final,forced=false,answerRevision:spokenRevis
   const replacement=!forced?questionReplacement(text,source):null;
   if(replacement&&settings.auto&&!editingQuestion){interviewerTurn.clear();if(replacement.question)interviewerTurn.accept(replacement.question);if(candidateSpeaking&&raw)bookmarkAnswer();void replaceQuestion(replacement.question?{question:replacement.question,autoDetect:false,showImmediately:true,inputSource:source,speechEndedAt}:null);return;}
   let bundle;
-  if(settings.auto&&source==='system'&&!forced&&sharedIntent!=='unknown'){try{bundle=interviewerTurn.accept(text,{at:speechEndedAt??now});}catch(e){notice(e.message);return;}if(!bundle)return;text=bundle.question;latestSpeechText=text;rememberQuestion(text);}
-  const next={question:text,autoDetect:forced||bundle?.confirmed?false:settings.auto,inputSource:shared?'shared':source,speechEndedAt,recognizedAt,transcriptionMs,eager,...(bundle?{batchId:bundle.batchId,showImmediately:true}:{}),...(shared?{showImmediately:true}:{})};
+  if(settings.auto&&source==='system'&&!forced&&sharedIntent!=='unknown'&&(!raw||interviewerRequest(text))){try{bundle=interviewerTurn.accept(text,{at:speechEndedAt??now});}catch(e){notice(e.message);return;}if(!bundle)return;text=bundle.question;latestSpeechText=text;rememberQuestion(text);}
+  const next={question:text,autoDetect:forced||bundle?.confirmed?false:settings.auto,inputSource:shared?'shared':source,speechEndedAt,recognizedAt,transcriptionMs,eager,waitForComplete:!forced&&!!raw,...(bundle?{batchId:bundle.batchId,showImmediately:true}:{}),...(shared?{showImmediately:true}:{})};
   if(settings.auto&&!editingQuestion&&source==='system'&&(bundle||explicitQuestion(text))){
     if((candidateSpeaking||interrupting)&&raw)bookmarkAnswer();
     if(localBusy||advancingFollowup){void advanceFollowup(next);return;}
@@ -672,12 +672,12 @@ async function cloudApiAnswer(data,signal){
   const provider=settings.provider,model=read('apiModel:'+provider,'');
   if(!model)throw new Error('Choose your answer model in Your AI.');
   const messages=deviceModule.answerMessages({...data,question,knowledge:background}).map(m=>({...m,content:m.content.replace(/\n\/(?:no_)?think$/,'')}));
-  return apiResponse(native,{question,provider,model,messages},signal);
+  return apiResponse(native,{question,provider,model,messages,autoDetect:data.autoDetect},signal);
 }
 async function chatGPTAnswer(data,signal){
   await localDevice();let question=data.question;if(!question)question=await deviceRuntime.transcribe(data.pcm,signal);
   const model=read('chatGPTModel','');if(!model)throw new Error('Choose your ChatGPT model in Your AI.');
-  return accountResponse(native,{question,model,messages:deviceModule.answerMessages({...data,question,knowledge:background})},signal);
+  return accountResponse(native,{question,model,messages:deviceModule.answerMessages({...data,question,knowledge:background}),autoDetect:data.autoDetect},signal);
 }
 personalSetup=setupUI({$,native,read,write,getSettings:()=>settings,localStatus:()=>deviceRuntime?.status(),stopListening:()=>{if(connected||connecting)stop('Setup opened');cancelWarmup();},
   saveContext:text=>{settings.profile=text;saveProfile();if(background)applyBackground(background);syncControls();},

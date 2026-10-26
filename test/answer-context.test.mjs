@@ -67,3 +67,13 @@ test('follow-up snapshot is bounded and a topic switch removes previous generate
  const follow=answerContext({question:'Why that choice?',history});assert.equal(follow.history.length,2);assert.ok(follow.history.every(h=>h.answer.length===2000));
  assert.deepEqual(answerContext({question:'What is inflation?',history}).history,[]);
 });
+
+test('short hypothetical follow-ups retain the numbers from the preceding case',()=>{
+ const history=[{question:'CAC is 1500 and monthly gross profit is 300. What is payback?',answer:'ANSWER: Payback is 5 months.'}];
+ for(const question of ['What if CAC doubles?','How about annual billing?','How so?','Tell me more.']){
+  const context=answerContext({question,history,profile,knowledge:bank});
+  assert.equal(context.mode,'follow-up',question);assert.equal(context.history[0].question,history[0].question);
+  assert.equal(context.profile,'');assert.equal(context.knowledge.records.length,0);
+ }
+ assert.deepEqual(answerContext({question:'What is photosynthesis?',history}).history,[]);
+});

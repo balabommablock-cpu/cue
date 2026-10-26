@@ -1,4 +1,5 @@
 import {unwrap} from './account-ui.js';
+import {formatSuggestion} from './core.js';
 export function apiResponse(native,data,signal){
   const interrupt=id=>{void Promise.resolve(native.apiInterrupt(id)).catch(()=>{});};
   const id=crypto.randomUUID(),encoder=new TextEncoder();let off,closed=false,abort;
@@ -9,8 +10,8 @@ export function apiResponse(native,data,signal){
     signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){finish();return;}
     emit({type:'accepted',requestId:id});emit({type:'question',text:data.question});
     emit({type:'stage',step:'draft',text:'Thinking with '+(data.provider==='anthropic'?'Claude':'OpenAI')+'…'});
-    off=native.onApiAnswer(e=>{if(e.id===id&&e.type==='delta')emit({type:'answer',text:'ANSWER:\n'+e.text,streaming:true});});
-    native.apiAnswer({...data,id}).then(result=>{const value=unwrap(result);emit({type:'answer',text:'ANSWER:\n'+value.text,streaming:false});emit({type:'done'});}).catch(e=>emit({type:'error',message:e.message})).finally(finish);
+    off=native.onApiAnswer(e=>{if(e.id===id&&e.type==='delta')emit({type:'answer',text:formatSuggestion(e.text,data.autoDetect),streaming:true});});
+    native.apiAnswer({...data,id}).then(result=>{const value=unwrap(result);emit({type:'answer',text:formatSuggestion(value.text,data.autoDetect),streaming:false});emit({type:'done'});}).catch(e=>emit({type:'error',message:e.message})).finally(finish);
   },cancel(){closed=true;off?.();signal?.removeEventListener('abort',abort);interrupt(id);}});
   return new Response(body,{headers:{'Content-Type':'application/x-ndjson'}});
 }

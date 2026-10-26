@@ -4,6 +4,7 @@ import {EventEmitter} from 'node:events';
 import {PassThrough} from 'node:stream';
 import {CodexConnection,streamCodex} from '../codex-stream.mjs';
 import {parseResponse} from '../public/core.js';
+import {consumeAnswer} from '../public/answer-stream.js';
 
 function fixture(t){
   const p=new EventEmitter();p.stdin=new PassThrough();p.stdout=new PassThrough();p.stderr=new PassThrough();p.kills=0;p.kill=()=>{p.kills++;};
@@ -37,6 +38,11 @@ test('ephemeral writing session disables inherited connectors and streams only f
     if(method==='turn/start'){
       fake.onNotification('item/started',{threadId:'test-thread',item:{id:'thinking',type:'agentMessage',phase:'commentary'}});
       fake.onNotification('item/agentMessage/delta',{threadId:'test-thread',itemId:'thinking',delta:'Not answer text'});
+      for(const phase of ['analysis','reasoning']){
+        fake.onNotification('item/started',{threadId:'test-thread',item:{id:phase,type:'agentMessage',phase}});
+        fake.onNotification('item/agentMessage/delta',{threadId:'test-thread',itemId:phase,delta:'ANSWER: Private thinking, not the final answer.'});
+        fake.onNotification('item/completed',{threadId:'test-thread',item:{id:phase,type:'agentMessage',phase,text:'ANSWER: Private thinking, not the final answer.'}});
+      }
       fake.onNotification('item/agentMessage/delta',{threadId:'other-thread',itemId:'other',delta:'Private unrelated text'});
       fake.onNotification('item/started',{threadId:'test-thread',item:{id:'answer',type:'agentMessage',phase:'final_answer'}});
       for(const delta of ['ANSWER: I ','built the product.'])fake.onNotification('item/agentMessage/delta',{threadId:'test-thread',itemId:'answer',delta});
@@ -49,6 +55,10 @@ test('ephemeral writing session disables inherited connectors and streams only f
   const start=calls.find(x=>x.method==='thread/start').params;
   assert.equal(start.ephemeral,true);assert.equal(start.sandbox,'read-only');assert.equal(start.baseInstructions,'Grounded facts only.');
   assert.equal(start.config.mcp_servers.privateConnector.enabled,false);assert.equal(start.config.plugins['plugin@example'].enabled,false);
+  const decoded=[];
+  await consumeAnswer(new Response([...updates,{type:'done'}].map(e=>JSON.stringify(e)).join('\n')+'\n'),e=>decoded.push(e));
+  assert.equal(decoded.at(-1).type,'done');
+  const timing=decoded.find(e=>e.type==='timing');assert.equal(typeof timing.selection.model,'string');assert.ok(Object.values(timing.phases).every(Number.isFinite));
 });
 test('interrupted turns cannot be reported as completed answers',async()=>{
   let fake;

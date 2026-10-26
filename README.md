@@ -35,6 +35,8 @@ To update, quit Cue and replace it in Applications with the new download. Your o
 
 Cue normally keeps your data in `~/Library/Application Support/Cue`. An early Community-only installation continues using its existing `Cue Community` folder when no main Cue folder exists. Data is never copied from the developer’s computer into a release. Global launcher setup is optional: see [development](docs/DEVELOPMENT.md).
 
+An answer starts with the useful point and short cues. The first answer streams; a follow-up replaces it only after the replacement is complete. Brief acknowledgements and your own answer do not rewrite the cue card. The reader omits thinking commentary.
+
 ## AI choices
 
 | Mode | What runs locally | What leaves the Mac |

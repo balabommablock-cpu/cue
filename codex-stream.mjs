@@ -142,13 +142,13 @@ export class CodexSession {
           if(p.item?.type==='agentMessage')itemPhases.set(p.item.id,p.item.phase);
           if(['commandExecution','fileChange','mcpToolCall','dynamicToolCall','webSearch','collabAgentToolCall'].includes(p.item?.type))throw new Error('Codex attempted a tool action. This writing-only session was stopped.');
         }
-        if(method==='item/agentMessage/delta'&&itemPhases.get(p.itemId)!=='commentary'){
+        if(method==='item/agentMessage/delta'&&!['commentary','analysis','reasoning'].includes(itemPhases.get(p.itemId))){
           if(itemId!==p.itemId){itemId=p.itemId;text='';}
           text+=p.delta;if(text.length>12000)throw new Error('The answer exceeded the length limit.');
           if(turnDecision(text)==='answer'||turnDecision(text)==='wait'||options.allowUnframed&&text.trim()&&!/^\s*(?:A|AN|ANS|ANSW|ANSWE|ANSWER|W|WA|WAI|C|CH|CHE|CHEC|CHECK)(?::|\s*)$/.test(text))clearTimeout(firstTextTimer);
           phases.firstDeltaMs??=Math.round(performance.now()-begin);options.emit({type:'answer',text,streaming:true});
         }
-        if(method==='item/completed'&&p.item?.type==='agentMessage'&&p.item.phase!=='commentary'){
+        if(method==='item/completed'&&p.item?.type==='agentMessage'&&!['commentary','analysis','reasoning'].includes(p.item.phase)){
           text=p.item.text||text;clearTimeout(firstTextTimer);if(typeof text!=='string'||text.length>12000)throw new Error('The answer exceeded the length limit.');options.emit({type:'answer',text,streaming:false});
         }
         if(method==='turn/completed'){
@@ -181,7 +181,7 @@ export class CodexSession {
       if(run.requested)run.send();
       phases.turnStartedMs=Math.round(performance.now()-begin);
       const result=await done.promise;this.threadUsed=true;this.turns++;this.contextSize+=(options.prompt||'').length+text.length;
-      options.emit({type:'timing',phases:{...phases,totalMs:Math.round(performance.now()-begin)}});return result;
+      options.emit({type:'timing',selection:{model:session.model,serviceTier:session.serviceTier,effort:session.effort},phases:{...phases,totalMs:Math.round(performance.now()-begin)}});return result;
     }catch(e){
       if(run.requested&&run.terminal&&e.name==='AbortError'&&!options.signal?.aborted&&!rpc?.closed){this.threadUsed=true;this.turns++;this.contextSize+=(options.prompt||'').length+text.length;}
       else this.close(e);

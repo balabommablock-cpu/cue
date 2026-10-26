@@ -1,4 +1,20 @@
-# Cue 1.33.0 validation
+# Cue 1.33.1 validation
+
+Checked on 27 October 2026. These are bounded engineering observations, not a latency or device guarantee.
+
+- 469 automated checks passed, with no failures or skipped tests. The added scenarios cover backchannels, candidate speech, partial and failed follow-ups, a superseding challenge, rephrasing, typed follow-ups, Pause, Stop, timeouts and late responses.
+- The actual Codex stream is passed through the renderer decoder in regression testing. Model selection metadata is kept separate from numeric timing values; malformed timing cannot silently count as a successful answer.
+- Six live GPT-6.1 Sol / Fast / low-effort questions covered a product case, a follow-up, unit economics, a multipart metric question, a challenge and missing personal facts. All completed. First useful answer text ranged from 1.4 to 4.6 seconds (median 2.0); complete answers ranged from 2.7 to 6.8 seconds (median 3.9). Startup preparation took 4.2 seconds separately. These were sequential text-provider observations on one Mac, not full live-audio latency or a representative distribution.
+- A second live numerical follow-up check retained the preceding case: doubling CAC from ₹1,500 to ₹3,000 correctly changed payback from five to ten months and LTV:CAC to 1:1. Its first text took 1.7 seconds and completion 3.3 seconds.
+- The installed native 1.33.1 app generated the calculation and numerical follow-up. During drafting, the previous answer remained visible and no thinking text appeared; the completed replacement then showed the correct numbers. The answer remained present after the timing and completion events. The owner’s existing context and account were retained. Sol Fast was verified in native Settings.
+- The installed native recorded-voice test passed with Codex and locally cached MLX Whisper after restoring its missing model weights. It performed real transcription and generated a cue answer; microphone and system capture were off in this sample test.
+- Live combined microphone/computer capture on the updated build reached the macOS recording-permission gate. The recorded-voice result above does not certify physical inputs; the updated app needs Screen & System Audio Recording consent before that check can finish.
+- Cue’s first answer streams; subsequent answer drafts stay hidden until completion. Brief acknowledgements do not replace the answer. Explicit Pause and editing still hold an answer for review. Short what-if follow-ups keep a bounded recent snapshot; an unrelated new topic excludes previous answers and career material.
+- Thinking/commentary model events and leading think/analysis blocks are excluded. The live reader hides its former progress strip and slow-answer narration. Actual failures remain visible with retry.
+
+The earlier tests below remain historical checks, with their original dates and versions. Physical audio and sharing results from 1.33.0 are not new certifications for 1.33.1. The Mac preview remains ad-hoc signed and is not Apple notarized.
+
+## Earlier 1.33.0 checks
 
 Checked on 21 October 2026. These are engineering checks, not a guarantee about every device, AI answer or meeting provider.
 

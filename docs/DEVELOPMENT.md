@@ -18,6 +18,10 @@ The api-providers module owns encrypted key storage, account model discovery, fi
 
 The desktop-data helper retains the established Cue data directory and supports an early Community-only folder without overwriting either. Fresh packages contain no user data.
 
+## Advanced Codex audio
+
+The advanced Codex path uses an existing signed-in Codex installation. Its legacy speech backend also requires a configured Python environment containing MLX Whisper and cached `mlx-community/whisper-small.en-mlx` weights. Finding Python alone does not establish a usable speech model. Run the recorded-question check before a live conversation. The ordinary ChatGPT, API and On this Mac modes use bundled Whisper setup and do not require this Python environment.
+
 ## Launcher
 
 Build optional native helpers with `npm run build:native` and `npm run build:launcher`. `node install-launcher.mjs` installs the right-Option hold launcher for the current user. Read the script before installation; it creates a per-user LaunchAgent. A normal app launch does not install a background launcher silently.

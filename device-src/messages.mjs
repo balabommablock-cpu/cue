@@ -4,5 +4,5 @@ export function answerMessages(data){
   const profile={...EMPTY_PROFILE,facts:String(data.profile||'').slice(0,20000),documents,style:data.style==='script'?'paragraph':'cues'};
   if(String(data.profile||'').length>20000)profile.documents.push({id:'additional-profile',title:'More personal context',text:String(data.profile).slice(20000,40000)});
   const history=(data.history||[]).filter(h=>!/^WAIT:/.test(h.answer)).map(h=>({...h,answer:h.answer.replace(/^ANSWER:\s*/, '')}));
-  return makeMessages(String(data.question||'').slice(0,2500),profile,history);
+  return makeMessages(String(data.question||'').slice(0,2500),profile,history,data.autoDetect);
 }

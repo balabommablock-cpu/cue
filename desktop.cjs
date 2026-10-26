@@ -143,6 +143,7 @@ else {
     await win.loadURL(origin);
   }).catch(error=>{if(quitting)return;diagnostic('startup-error',error);dialog.showErrorBox('Cue could not start',error.code==='EADDRINUSE'?'Port 4329 is already in use. Close the other Cue window or development server, then reopen Cue from Applications.':'Cue could not load its local components. Reopen Cue from Applications. If this repeats, keep your saved data and reinstall the app.');app.quit();});
   app.on('window-all-closed',()=>app.quit());
+  app.on('activate',()=>{if(!quitting&&win&&!win.isDestroyed()){win.show();win.focus();}});
   app.on('before-quit',shutdown);
   app.on('will-quit',()=>diagnostic('will-quit'));
 }

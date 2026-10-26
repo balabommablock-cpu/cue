@@ -1,7 +1,7 @@
 import {knowledgeText} from './knowledge.mjs';
 
 const normalise=q=>String(q||'').trim().toLowerCase().replace(/^please\s+/,'').replace(/^(can|could|would|will) you (please )?(?=define|explain|compare|tell me|solve|calculate|translate|write|rewrite|draft|debug|summari[sz]e|derive|list|outline|design)/,'');
-const refersBack=q=>/^(and |but |why\??$|why not\b|what about\b|what happened next\b|then\b)|\b(that|those|it|them|instead|again|the previous|the earlier|your proposed|your suggestion|your answer)\b/.test(q);
+const refersBack=q=>/^(and |but |why\??$|why not\b|how so\b|how about\b|what if\b|what about\b|tell me more\b|what happened next\b|then\b)|\b(that|those|it|them|instead|again|the previous|the earlier|your proposed|your suggestion|your answer)\b/.test(q);
 const submitted=q=>/\b(application|submitted|submission|form)\b/.test(q);
 
 // Career evidence is opt-in by the meaning of the request. Second-person
