@@ -2,9 +2,9 @@ import {apiResponse} from './api-ui.js';
 import {preferencesUI} from './preferences-ui.js';
 import {setupUI} from './setup-ui.js';
 import {unwrap,accountResponse} from './account-ui.js';
-import {parseResponse,completedText} from './core.js';
+import {parseResponse,completedText,completedOpening} from './core.js';
 import {ProgressView} from './progress-ui.js';
-import {QuestionJoiner,InterviewTurn,caseSetup} from './question-joiner.js';
+import {QuestionJoiner,InterviewTurn,caseSetup,spokenRequest} from './question-joiner.js';
 import {ConversationLedger} from './conversation.js';
 import {QuestionSegmenter,pcmBase64} from './local-audio.js';
 import {acquireAudio,inputLevel} from './audio-capture.js';
@@ -101,6 +101,7 @@ let retryInput=null,readyAnswer=null,candidateSpeaking=false,quietTimer,answerRe
 let sourceBeforeText=null;
 let processor,segmenter,pendingPCM,localSessionId,localBusy=false,localAbort,localHistory=[],audioHeard=false;
 let advancingFollowup=false;
+let preparedAnswer=null;
 let localJob=null,requestSequence=0,replacementRevision=0,editingQuestion=false,editHold=null,lastHeardQuestion='';
 let platforms=[],shareState={state:'stopped',message:'Share View is off.'},shareStarting=false;
 function renderShareState(value){if(!value)return;const previous=shareState.message;shareState=value;$('shareState').textContent=value.message||'Share View is off.';$('shareButton').textContent=['starting','live','permission_required','error'].includes(value.state)?'Close share view':'Share view';if(['live','permission_required','error'].includes(value.state))notice(value.message);else if(value.state==='stopped'&&$('notice').textContent===previous)notice('');}
@@ -300,7 +301,7 @@ async function getAudio(mine){
   capture=acquired;return acquired?.stream||null;
 }
 function stop(message='Stopped'){
-  conversation.clear();
+  preparedAnswer=null;conversation.clear();
   interviewerTurn.clear();questionJoiner.clear();sharedQuestionJoiner.clear();crossSourceEcho.clear();
   coach?.stop();bookmarks.length=0;$('returnAnswer').hidden=true;
   if(localSessionId){const sessionId=localSessionId;localSessionId=null;void request('/api/codex/stop',{sessionId}).catch(()=>{});}
@@ -397,10 +398,10 @@ async function advanceFollowup(input){
 }
 async function replaceQuestion(input,{preserveContext=false,preservePending=false}={}){
   const revision=++replacementRevision,mine=generation,job=localJob;
-  if(!preservePending)pendingQuestions.clear();pendingPCM=null;readyAnswer=null;retryInput=null;
+  preparedAnswer=null;if(!preservePending)pendingQuestions.clear();pendingPCM=null;readyAnswer=null;retryInput=null;
   $('showReadyAnswer').hidden=true;$('retryAnswer').hidden=true;
   if(job){
-    if(preserveContext&&!job.contextSaved&&job.question){localHistory.push({question:job.question,answer:job.draft?'UNFINISHED SUGGESTION (not evidence the candidate said it): '+job.draft.slice(0,5800):'WAIT: The draft was interrupted before a suggestion was ready.'});localHistory=localHistory.slice(-6);job.contextSaved=true;}
+    if(preserveContext&&!job.input?.preparation&&!job.contextSaved&&job.question){localHistory.push({question:job.question,answer:job.draft?'UNFINISHED SUGGESTION (not evidence the candidate said it): '+job.draft.slice(0,5800):'WAIT: The draft was interrupted before a suggestion was ready.'});localHistory=localHistory.slice(-6);job.contextSaved=true;}
     job.superseded=true;if(!preserveContext)job.restore();else $('answer').classList.remove('streaming');status('Updating question…','live');flow.set('switch','Stopping the old draft');
     if(!job.cancelling)job.cancelling=(async()=>{
       // Wait for server acceptance so a fast correction cannot overtake the
@@ -422,6 +423,42 @@ async function replaceQuestion(input,{preserveContext=false,preservePending=fals
   if(input){await localAnswer(input);}
   else if(!preservePending){latestSpeechText='';rememberQuestion('');$('incomingQuestionBlock').hidden=true;status(paused?'Paused':'Waiting for the next question','live');flow.set(paused?'paused':'listen');}
 }
+// Draft only from actual computer speech. Nothing is shown, archived or used
+// as history until the final transcript and the surrounding speech agree.
+function preparationContext(source,utteranceId){
+  const key=source+':'+utteranceId;
+  return JSON.stringify(conversation.items.filter(item=>item.key!==key).map(({speaker,text})=>({speaker,text})));
+}
+function onSpeechPreview({text,source,utteranceId,speechEndedAt,recognizedAt,transcriptionMs}){
+  if(source!=='system'||utteranceId===undefined||!connected||paused||editingQuestion||!settings.auto||!usesText()||localBusy||readyAnswer)return;
+  if(preparedAnswer&&performance.now()-preparedAnswer.preparation.at<12000)return;
+  preparedAnswer=null;
+  const joiner=new QuestionJoiner();joiner.pending=questionJoiner.pending?{...questionJoiner.pending}:null;
+  const joined=joiner.accept(text,{speechEndedAt});
+  if(joined.waiting||!spokenRequest(joined.question)||questionReplacement(joined.question,'system'))return;
+  const turn=new InterviewTurn();Object.assign(turn,interviewerTurn,{parts:[...interviewerTurn.parts]});
+  const bundle=turn.accept(joined.question,{at:speechEndedAt??performance.now()});if(!bundle)return;
+  const preparation={source,utteranceId,at:performance.now(),context:preparationContext(source,utteranceId)};
+  void localAnswer({question:bundle.question,autoDetect:false,inputSource:source,speechEndedAt,recognizedAt,transcriptionMs,waitForComplete:true,preparation});
+}
+function commitAnswer(question,draft,input,deferred){
+  if(turnDecision(draft)==='answer'){
+    answerArchive.push({question,raw:draft});archiveIndex-=Math.max(0,answerArchive.length-12);answerArchive=answerArchive.slice(-12);
+    if(deferred){readyAnswer={question,raw:draft,requestedAt:input.speechEndedAt??startAt,fromSpeech:input.speechEndedAt!==undefined,automatic:!!(input.waitForComplete||input.showImmediately)};$('showReadyAnswer').hidden=false;if(!$('incomingQuestionBlock').hidden)$('incomingQuestionLabel').textContent='NEXT ANSWER READY';maybePresentReady();}
+    else{archiveIndex=answerArchive.length-1;syncArchive();}
+  }
+  localHistory.push({question,answer:draft.slice(0,6000)});localHistory=localHistory.slice(-6);
+}
+function adoptPreparedAnswer(input,{source,utteranceId}){
+  const active=localJob?.input?.preparation?localJob:null;
+  const candidate=active?{question:active.question,input:active.input,preparation:active.input.preparation}:preparedAnswer;
+  if(!candidate)return false;
+  const prep=candidate.preparation;
+  const matches=!prep.invalidated&&prep.source===source&&prep.utteranceId===utteranceId&&performance.now()-prep.at<12000&&sameUtterance(candidate.question,input.question)&&prep.context===preparationContext(source,utteranceId);
+  preparedAnswer=null;if(!matches)return false;
+  if(active){Object.assign(active.input,input);delete active.input.preparation;showIncomingQuestion(input.question);active.reveal?.();return true;}
+  commitAnswer(input.question,candidate.draft,input,true);return true;
+}
 async function localAnswer(input){
   if(!connected)return;
   if(localBusy){if(input.pcm)pendingPCM=input.pcm;else queueQuestion(input);return;}
@@ -429,18 +466,33 @@ async function localAnswer(input){
   if(!autoDetect)lastQuestionAt=performance.now();
   localBusy=true;localAbort=new AbortController();const controller=localAbort;
   readyAnswer=null;$('showReadyAnswer').hidden=true;
-  let settle,accept;const job={id:`${mine}-${++requestSequence}`,controller,superseded:false,question:input.question||'',draft:'',finished:new Promise(r=>settle=r),accepted:new Promise(r=>accept=r)};localJob=job;
+  let settle,accept;const job={id:`${mine}-${++requestSequence}`,controller,superseded:false,input,question:input.question||'',draft:'',finished:new Promise(r=>settle=r),accepted:new Promise(r=>accept=r)};localJob=job;
   const previousCoach=coach.snapshot();
   const previous={raw,question:$('question').textContent,label:$('questionLabel').textContent,heardQuestion:lastHeardQuestion,scroll:$('answerFrame').scrollTop,cursor:reader.cursor};
-  if(input.question)showIncomingQuestion(input.question);
+  if(input.question&&!input.preparation)showIncomingQuestion(input.question);
   startAt=performance.now();status(input.question?'Preparing answer…':'Transcribing…','live');flow.set(input.question?'match':'transcribe',input.question?'Reading your question':'Turning speech into text');firstTextAt=0;syncArchive();
   retryInput=null;$('retryAnswer').hidden=true;
   const bufferedFollowup=!!parseResponse(raw).answer.trim();
-  let q=input.question||'',draft='',displayStarted=false,deferred=bufferedFollowup,completed=false,timedOut=false;
+  let q=input.question||'',draft='',displayStarted=false,deferred=!!input.preparation||bufferedFollowup,completed=false,timedOut=false,stableOpening='';
   job.restore=()=>{coach.restore(previousCoach,{running:connected&&!paused});lastHeardQuestion=previous.heardQuestion;$('incomingQuestionBlock').hidden=true;$('question').textContent=previous.question;$('questionLabel').textContent=previous.label;refreshView();if(!displayStarted)return;reader.stop();raw=previous.raw;render();$('question').textContent=previous.question;$('questionLabel').textContent=previous.label;$('answerFrame').scrollTop=previous.scroll;reader.cursor=previous.cursor;$('answer').classList.remove('streaming');displayStarted=false;};
+  function revealDraft(streaming){
+        if(turnDecision(draft)==='answer'){
+          if(deferred&&input.fastOpening&&!input.preparation&&!paused&&!editingQuestion&&!questionAudioPending()){const opening=completedOpening(draft);if(opening){deferred=false;stableOpening=opening;}}
+          if(stableOpening&&!parseResponse(draft).answer.startsWith(stableOpening))throw new Error('The model changed its opening while streaming. Retry the question.');
+          if(!displayStarted&&!deferred)deferred=paused||editingQuestion||questionAudioPending()||(!input.showImmediately&&!!raw&&(candidateSpeaking||reader.held));
+          if(!deferred){
+            if(!displayStarted){resetDisplay();beginCoaching(q);displayStarted=true;$('question').textContent=q;$('questionLabel').textContent='QUESTION';notice('');}
+            raw=stableOpening&&streaming?'ANSWER:\n'+parseResponse(draft).answer.slice(0,Math.max(parseResponse(draft).answer.lastIndexOf('\n'),stableOpening.length)).trimEnd():draft;render();$('answer').classList.toggle('streaming',!!streaming);
+            if(!firstTextAt){firstTextAt=performance.now();$('latency').textContent=((firstTextAt-(input.speechEndedAt??startAt))/1000).toFixed(1)+(input.speechEndedAt!==undefined?'s from speech end':'s to text');$('latency').title=input.speechEndedAt!==undefined?'Includes the end-of-question pause, transcription, queueing and drafting.':'Time from sending the question to the first answer text.';}
+          }
+          if(streaming){status(deferred?'Next answer is being written':'Writing answer','live');flow.set('write',deferred?'Your next answer will wait until you finish':'Text appears as it arrives');}
+        }
+  }
+  job.reveal=()=>revealDraft(true);
   const timeout=setTimeout(()=>{timedOut=true;controller.abort();},30000);
   try{
-    const data=scoped({...input,requestId:job.id,autoDetect,profile:effectiveProfile(),style:settings.style,answerModel:settings.answerModel,answerSpeed:settings.answerSpeed,history:localHistory,conversation:conversation.snapshot(input.question)});
+    const {preparation,fastOpening,...answerInput}=input;
+    const data=scoped({...answerInput,requestId:job.id,autoDetect,profile:effectiveProfile(),style:settings.style,answerModel:settings.answerModel,answerSpeed:settings.answerSpeed,history:localHistory,conversation:conversation.snapshot(input.question)});
     const r=apiProvider()?await cloudApiAnswer(data,controller.signal):settings.provider==='chatgpt'?await chatGPTAnswer(data,controller.signal):settings.provider==='device'?(await localDevice()).answerResponse({...data,knowledge:background},controller.signal):await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json','X-Cue-Client':'1'},body:JSON.stringify(data),signal:controller.signal});
     if(!r.ok)throw new Error((await r.json()).error||'The answer request failed. Retry the question.');
     await consumeAnswer(r,e=>{
@@ -449,36 +501,22 @@ async function localAnswer(input){
       if(e.type==='context'){flow.set('draft',e.mode==='personal'?'Using relevant personal facts':'Answering from general knowledge');}
       if(e.type==='timing'){$('latency').title=[$('latency').title,`Ready-session wait: ${e.phases.readyWaitMs||0}ms; model connection: ${e.phases.readyMs}ms; first model text: ${e.phases.firstDeltaMs}ms; total generation: ${e.phases.totalMs}ms.`,input.transcriptionMs!==undefined?`Speech recognition: ${Math.round(input.transcriptionMs)}ms.`:''].filter(Boolean).join(' ');}
       if(e.type==='stage'){status(e.text,'live');flow.set(e.step||(/Transcrib/i.test(e.text)?'transcribe':'draft'),e.text);}
-      if(e.type==='question'){q=e.text;job.question=q;showIncomingQuestion(q);$('heardLine').textContent='Heard: '+q;$('heardLine').hidden=false;}
-      if(e.type==='answer'){
-        draft=e.text;job.draft=draft;
-        if(turnDecision(draft)==='answer'){
-          if(!displayStarted&&!deferred)deferred=paused||editingQuestion||questionAudioPending()||(!input.showImmediately&&!!raw&&(candidateSpeaking||reader.held));
-          if(!deferred){
-            if(!displayStarted){resetDisplay();beginCoaching(q);displayStarted=true;$('question').textContent=q;$('questionLabel').textContent='QUESTION';notice('');}
-            raw=draft;render();$('answer').classList.toggle('streaming',!!e.streaming);
-            if(!firstTextAt){firstTextAt=performance.now();$('latency').textContent=((firstTextAt-(input.speechEndedAt??startAt))/1000).toFixed(1)+(input.speechEndedAt!==undefined?'s from speech end':'s to text');$('latency').title=input.speechEndedAt!==undefined?'Includes the end-of-question pause, transcription, queueing and drafting.':'Time from sending the question to the first answer text.';}
-          }
-          if(e.streaming){status(deferred?'Next answer is being written':'Writing answer','live');flow.set('write',deferred?'Your next answer will wait until you finish':'Text appears as it arrives');}
-        }
-      }
+      if(e.type==='question'){q=e.text;job.question=q;if(!input.preparation){showIncomingQuestion(q);$('heardLine').textContent='Heard: '+q;$('heardLine').hidden=false;}}
+      if(e.type==='answer'){draft=e.text;job.draft=draft;revealDraft(e.streaming);}
       if(e.type==='done'&&turnDecision(draft)==='pending')throw new Error('No complete answer arrived. Retry the question.');
       if(e.type==='done')completed=true;
       if(e.type==='empty'){$('heardLine').textContent='No clear speech heard. Try again or type the question.';$('heardLine').hidden=false;}
     });
     if(mine!==generation||job.superseded)return;
     if(completed){
-      if(turnDecision(draft)==='answer'){
-        answerArchive.push({question:q,raw:draft});archiveIndex-=Math.max(0,answerArchive.length-12);answerArchive=answerArchive.slice(-12);
-        if(deferred){readyAnswer={question:q,raw:draft,requestedAt:input.speechEndedAt??startAt,fromSpeech:input.speechEndedAt!==undefined,automatic:!!(input.waitForComplete||input.showImmediately)};$('showReadyAnswer').hidden=false;if(!$('incomingQuestionBlock').hidden)$('incomingQuestionLabel').textContent='NEXT ANSWER READY';maybePresentReady();}
-        else{archiveIndex=answerArchive.length-1;syncArchive();}
-      }
-      localHistory.push({question:q,answer:draft.slice(0,6000)});localHistory=localHistory.slice(-6);
+      if(input.preparation){
+        if(turnDecision(draft)==='answer')preparedAnswer={question:q,draft,input,preparation:input.preparation};
+      }else commitAnswer(q,draft,input,deferred);
       if(turnDecision(draft)==='wait'){job.restore();$('heardLine').textContent='Heard: '+q+' · No new question';}
     }
     if(mine===generation){status(paused?'Paused':readyAnswer?'Next answer ready':settings.source==='text'?(providerName()+' ready'):('Listening · '+providerName()),'live');flow.set(paused?'paused':readyAnswer?'hold':turnDecision(draft)==='answer'?'ready':'listen',turnDecision(draft)==='wait'?'No new question':$('latency').textContent);}
   }catch(e){
-    if(mine===generation&&!job.superseded&&(e.name!=='AbortError'||timedOut)){
+    if(mine===generation&&!job.superseded&&!input.preparation&&(e.name!=='AbortError'||timedOut)){
       job.restore();
       retryInput={...input,question:q||input.question};$('retryAnswer').hidden=false;
       notice((timedOut?'The answer timed out. Retry when your connection is ready.':e.message)+(previous.raw?' Your previous answer is still here.':''));status('Answer failed','error');flow.set('error',e.message);
@@ -513,6 +551,7 @@ async function connectLocal(mine){
         parallel:dualAudio(settings.source),
         transcribe:(pcm,signal,item)=>transcribeSpeech(pcm,signal,{lane:transcriptionLane(settings.source,item.source)}),
         onTranscript:item=>{if(mine===generation&&!paused)onSpeechText(item);},
+        onPreview:item=>{if(mine===generation&&!paused)onSpeechPreview(item);},
         onIdle:()=>{if(mine===generation)maybePresentReady();},
         onState:item=>{if(mine===generation&&!paused&&(item.source==='system'||item.source==='shared'))flow.set('transcribe',item.queued?'Catching up with the conversation':'Turning speech into text');},
         onError:e=>{if(mine===generation&&!paused){notice(e.message);flow.set('error',e.message);}},
@@ -524,7 +563,7 @@ async function connectLocal(mine){
         const part=new QuestionSegmenter((samples,meta)=>{const forced=!!part.forced;part.forced=false;speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:true,forced,...meta,answerRevision:part.readingRevision,coachEpoch:part.coachEpoch,interrupting:part.interrupting,overlappedSystem:!!part.overlappedSystem});},()=>{
           if(input.kind==='system'){for(const mic of segmenters)if((mic.source==='mic'||mic.source==='shared')&&mic.active)mic.overlappedSystem=true;part.interrupting=candidateSpeaking;reader.stop();flow.set('speech',localBusy?'Hearing the next question while the draft finishes':'Computer audio is arriving');if(!localBusy)status('Interviewer speaking','live');}
           else {part.overlappedSystem=segmenters.some(p=>p.source==='system'&&p.active);part.readingRevision=answerRevision;part.coachEpoch=coach.epoch;if(speechSource==='shared'){flow.set('speech','Room microphone is hearing speech');if(!localBusy)status('Hearing the conversation','live');}else{candidateSpeaking=true;clearTimeout(quietTimer);if(!localBusy)status('You’re speaking','live');}}
-        },{voiceThreshold:speechSource==='system'?.002:.012,silenceMs:speechSource==='mic'?650:450,quietMs:speechSource==='mic'?250:160,partialMs:900,onQuiet:speechSource!=='mic'?(samples,meta)=>speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:false,endpoint:true,...meta,answerRevision:part.readingRevision,coachEpoch:part.coachEpoch}):null,onEnd:input.kind==='mic'?finishSpeaking:()=>{},onPartial:input.kind==='mic'?(samples,meta)=>{if(raw||interviewerTurn.parts.length)speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:false,...meta,answerRevision:part.readingRevision,coachEpoch:part.coachEpoch,overlappedSystem:!!part.overlappedSystem});}:null});
+        },{voiceThreshold:speechSource==='system'?.002:.012,silenceMs:speechSource==='mic'?650:450,quietMs:speechSource==='mic'?250:160,partialMs:900,onQuiet:speechSource!=='mic'?(samples,meta)=>speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:false,endpoint:true,...meta,answerRevision:part.readingRevision,coachEpoch:part.coachEpoch}):null,onEnd:input.kind==='mic'?finishSpeaking:()=>{},onPartial:input.kind==='system'?(samples,meta)=>{speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:false,previewOnly:true,...meta});}:(samples,meta)=>{if(raw||interviewerTurn.parts.length)speechPipeline?.push({pcm:pcmBase64(samples),source:speechSource,final:false,...meta,answerRevision:part.readingRevision,coachEpoch:part.coachEpoch,overlappedSystem:!!part.overlappedSystem});}});
         part.source=speechSource;segmenters.push(part);worklet.port.onmessage=e=>{if(!paused&&mine===generation)part.push(e.data);};
       }
       await audioCtx.resume();if(mine!==generation)return;audioMeter();
@@ -587,7 +626,8 @@ function onSpeechText({text,source,final,forced=false,answerRevision:spokenRevis
   if(replacement&&settings.auto&&!editingQuestion){interviewerTurn.clear();if(replacement.question)interviewerTurn.accept(replacement.question);if(candidateSpeaking&&raw)bookmarkAnswer();void replaceQuestion(replacement.question?{question:replacement.question,autoDetect:false,showImmediately:true,inputSource:source,speechEndedAt}:null);return;}
   let bundle;
   if(settings.auto&&source==='system'&&!forced&&sharedIntent!=='unknown'&&(!raw||interviewerRequest(text))){try{bundle=interviewerTurn.accept(text,{at:speechEndedAt??now});}catch(e){notice(e.message);return;}if(!bundle)return;text=bundle.question;latestSpeechText=text;rememberQuestion(text);}
-  const next={question:text,autoDetect:forced||bundle?.confirmed?false:settings.auto,inputSource:shared?'shared':source,speechEndedAt,recognizedAt,transcriptionMs,eager,waitForComplete:!forced&&!!raw,...(bundle?{batchId:bundle.batchId,showImmediately:true}:{}),...(shared?{showImmediately:true}:{})};
+  const next={fastOpening:settings.style==='cues'&&!/\b(?:json|code|translate|write|rewrite|draft)\b/i.test(text),question:text,autoDetect:forced||bundle?.confirmed?false:settings.auto,inputSource:shared?'shared':source,speechEndedAt,recognizedAt,transcriptionMs,eager,waitForComplete:!forced&&!!raw,...(bundle?{batchId:bundle.batchId,showImmediately:true}:{}),...(shared?{showImmediately:true}:{})};
+  if(adoptPreparedAnswer(next,{source:shared?'shared':source,utteranceId}))return;
   if(settings.auto&&!editingQuestion&&source==='system'&&(bundle||explicitQuestion(text))){
     if((candidateSpeaking||interrupting)&&raw)bookmarkAnswer();
     if(localBusy||advancingFollowup){void advanceFollowup(next);return;}
@@ -607,11 +647,11 @@ $('provider').onchange=providerUI;$('answerModel').onchange=providerUI;$('answer
 $('audioSource').onchange=audioSourceUI;
 $('quickAudio').onchange=()=>{if(connected||connecting){$('quickAudio').value=sourceBeforeText??settings.source;return;}settings.source=$('quickAudio').value;write('source',settings.source);$('audioSource').value=settings.source;audioSourceUI();syncControls();reader.describe();};
 $('settingsForm').onsubmit=async e=>{e.preventDefault();if($('profile').value.trim().length>40000){$('factsDetails').open=true;$('profile').focus();$('saveMessage').textContent='Keep your context under 40,000 characters.';return;}const answerModel=$('answerModel').value,answerSpeed=$('answerSpeed').value;try{answerOptions({answerModel,answerSpeed});}catch(error){$('saveMessage').textContent=error.message;return;}const source=$('audioSource').value,provider=$('provider').value,microphone=$('microphoneDevice').value,echoCancellation=$('echoCancellation').checked;if((answerModel!==settings.answerModel||answerSpeed!==settings.answerSpeed||source!==settings.source||provider!==settings.provider||microphone!==settings.microphone||echoCancellation!==settings.echoCancellation||$('deviceModel').value!==settings.deviceModel||$('profile').value!==settings.profile||$('style').value!==settings.style)&&(connected||connecting))stop('Settings changed');settings.answerModel=answerModel;settings.answerSpeed=answerSpeed;settings.deviceModel=$('deviceModel').value;settings.provider=provider;settings.source=source;settings.microphone=microphone;settings.echoCancellation=echoCancellation;settings.style=$('style').value;settings.auto=$('autoAnswer').checked;settings.profile=$('profile').value;for(const [k,v] of Object.entries(settings))if(k!=='profile')write(k,v);saveProfile();try{await updateInstructions();$('settings').close();if(background)applyBackground(background);syncControls();reader.describe();}catch(e){$('saveMessage').textContent=e.message;}};
-$('pauseButton').onclick=()=>{paused=!paused;capture?.setPaused(paused);if(paused){interviewerTurn.clear();questionJoiner.clear();sharedQuestionJoiner.clear();crossSourceEcho.clear();coach.stop();if(usesText()){segmenter?.reset();for(const part of segmenters)part.reset();speechPipeline?.clear();pendingQuestions.clear();pendingPCM=null;candidateSpeaking=false;clearTimeout(quietTimer);reader.stop();}else send({type:'input_audio_buffer.clear'});}else {if(coach.question)coach.restore(coach.snapshot());reader.describe();if(readyAnswer&&!editingQuestion)showReadyAnswer();if(analyser){cancelAnimationFrame(meterFrame);audioMeter();}if(usesText()&&pendingPCM&&settings.auto&&!localBusy){const pcm=pendingPCM;pendingPCM=null;void localAnswer({pcm});}}status(paused?'Paused':localBusy?'Writing answer':'Listening',paused?'':'live');flow.set(paused?'paused':localBusy?'draft':'listen');syncControls();};
+$('pauseButton').onclick=()=>{paused=!paused;capture?.setPaused(paused);if(paused){preparedAnswer=null;if(localJob?.input?.preparation)localJob.input.preparation.invalidated=true;interviewerTurn.clear();questionJoiner.clear();sharedQuestionJoiner.clear();crossSourceEcho.clear();coach.stop();if(usesText()){segmenter?.reset();for(const part of segmenters)part.reset();speechPipeline?.clear();pendingQuestions.clear();pendingPCM=null;candidateSpeaking=false;clearTimeout(quietTimer);reader.stop();}else send({type:'input_audio_buffer.clear'});}else {if(coach.question)coach.restore(coach.snapshot());reader.describe();if(readyAnswer&&!editingQuestion)showReadyAnswer();if(analyser){cancelAnimationFrame(meterFrame);audioMeter();}if(usesText()&&pendingPCM&&settings.auto&&!localBusy){const pcm=pendingPCM;pendingPCM=null;void localAnswer({pcm});}}status(paused?'Paused':localBusy?'Writing answer':'Listening',paused?'':'live');flow.set(paused?'paused':localBusy?'draft':'listen');syncControls();};
 $('retryAnswer').onclick=()=>{if(retryInput&&!localBusy)void localAnswer(retryInput);};
 $('showReadyAnswer').onclick=showReadyAnswer;
 $('answerButton').onclick=()=>{try{generate();}catch(e){notice(e.message);}};
-$('typedForm').onsubmit=async e=>{e.preventDefault();const text=$('typedQuestion').value.trim();if(!text)return;if(!connected){if(connecting)return;await startTextSession();if(!connected)return;}if(usesText()){conversation.record({speaker:'interviewer',text});closeQuestionEditor();interviewerTurn.clear();$('typedQuestion').value='';void replaceQuestion({question:text,autoDetect:false,showImmediately:true});return;}try{closeQuestionEditor();lastFinished=0;cancelAnswer();send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text}]}});generate();$('typedQuestion').value='';$('question').textContent=text;}catch(e){notice(e.message);}};
+$('typedForm').onsubmit=async e=>{e.preventDefault();const text=$('typedQuestion').value.trim();if(!text)return;if(!connected){if(connecting)return;await startTextSession();if(!connected)return;}if(usesText()){conversation.record({speaker:'interviewer',text});closeQuestionEditor();interviewerTurn.clear();$('typedQuestion').value='';void replaceQuestion({question:text,autoDetect:false,showImmediately:true,fastOpening:settings.style==='cues'&&!/\b(?:json|code|translate|write|rewrite|draft)\b/i.test(text)});return;}try{closeQuestionEditor();lastFinished=0;cancelAnswer();send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text}]}});generate();$('typedQuestion').value='';$('question').textContent=text;}catch(e){notice(e.message);}};
 $('sampleButton').onclick=async()=>{
   stop();sourceBeforeText=settings.source;settings.answerModel=$('answerModel').value;settings.answerSpeed=$('answerSpeed').value;settings.provider=['device','chatgpt','openai','anthropic'].includes($('provider').value)?$('provider').value:'codex';settings.source='text';settings.profile=$('profile').value;settings.style=$('style').value;$('provider').value=settings.provider;$('settings').close();
   try{await connect();if(!connected)return;const sampleGeneration=generation,signal=aborter.signal;notice('Sample voice test · preparing transcription · microphone and system capture stay off');if(settings.provider==='device')await prepareDevice(signal,true);else if(['chatgpt','openai','anthropic'].includes(settings.provider))await(await localDevice()).prepareSpeech(signal);if(signal.aborted||sampleGeneration!==generation)return;notice('Recorded sample test · real transcription and AI answer · microphone and system capture are not being tested');const ctx=new AudioContext({sampleRate:16000});try{const response=await fetch('/sample-question.wav',{signal});if(!response.ok)throw new Error('The sample recording could not load. Try a typed question or reinstall Cue.');const audio=await ctx.decodeAudioData(await response.arrayBuffer());if(sampleGeneration===generation)await localAnswer({pcm:pcmBase64(audio.getChannelData(0))});}finally{await ctx.close();}}catch(e){if(e.name!=='AbortError')notice(e.message);}

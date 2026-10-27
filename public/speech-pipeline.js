@@ -20,7 +20,7 @@ export async function transcribeRequest(pcm,signal,{fetcher=fetch,wait=delay,lan
   }
 }
 export class SpeechPipeline {
-  constructor({transcribe,onTranscript,onError=()=>{},onState=()=>{},onIdle=()=>{},parallel=false}){Object.assign(this,{transcribe,onTranscript,onError,onState,onIdle});this.queue=[];this.busy=false;this.epoch=0;this.closed=false;this.cache=new Map();if(parallel)this.lanes=[new SpeechPipeline({transcribe,onTranscript,onError,onState,onIdle}),new SpeechPipeline({transcribe,onTranscript,onError,onState,onIdle})];}
+  constructor({transcribe,onTranscript,onPreview=()=>{},onError=()=>{},onState=()=>{},onIdle=()=>{},parallel=false}){Object.assign(this,{transcribe,onTranscript,onPreview,onError,onState,onIdle});this.queue=[];this.busy=false;this.epoch=0;this.closed=false;this.cache=new Map();if(parallel)this.lanes=[new SpeechPipeline({transcribe,onTranscript,onPreview,onError,onState,onIdle}),new SpeechPipeline({transcribe,onTranscript,onPreview,onError,onState,onIdle})];}
   hasPendingQuestionSpeech(){return this.lanes?this.lanes.some(lane=>lane.hasPendingQuestionSpeech()):[this.activeItem,...this.queue].some(item=>item&&(item.source==='system'||item.source==='shared'&&(item.final||item.endpoint)));}
   push(item){
     if(this.closed)return;
@@ -54,7 +54,8 @@ export class SpeechPipeline {
       const started=performance.now();const text=await this.transcribe(item.pcm,controller.signal,item);
       if(!this.closed&&epoch===this.epoch){
         const result={text,recognizedAt:performance.now(),transcriptionMs:performance.now()-started};
-        if(item.endpoint&&!item.final){this.cache.set(item.utteranceKey,result);if(this.cache.size>4)this.cache.delete(this.cache.keys().next().value);}
+        if(item.endpoint&&!item.final){this.cache.set(item.utteranceKey,result);if(this.cache.size>4)this.cache.delete(this.cache.keys().next().value);if(text.trim())this.onPreview({...item,...result});}
+        else if(item.previewOnly&&!item.final){if(text.trim())this.onPreview({...item,...result});}
         else if(text.trim())this.onTranscript({...item,...result});
       }
     }

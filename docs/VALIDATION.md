@@ -1,4 +1,20 @@
-# Cue 1.33.2 validation
+# Cue 1.33.3 validation
+
+Checked on 27 October 2026.
+
+- 524 automated checks passed with no failures or skips. Added coverage includes complete-opening display, append-only cue lines, provider prefix rewrites, hidden preparation/final-transcript agreement, changed constraints, changed candidate speech, Pause/Stop, failed previews, mixed-document evidence boundaries and hypothetical versus personal-advice routing.
+- Mixed Markdown context packs now separate career evidence, relevant role/company reference and rehearsal sections. Answer banks, speculative interviewer profiles and embedded document instructions are excluded from ordinary answer evidence. The original documents remain local; missing historical facts remain missing. Relevant company context can support a new product case without injecting a CV.
+- Six live GPT-6.1 Sol / Fast / low-effort cases used an actual supplied context pack. They covered a changed operational bottleneck, a commercial/platform trade-off, AI decision boundaries, tailored positioning, an unrelated concept/calculation and a challenge to the candidate's own stated metric. The outputs made new recommendations instead of copying the rehearsal bank. First provider text ranged from 1.7 to 2.6 seconds; complete opening lines from 2.1 to 3.5 seconds. These are text-provider timings, not full hardware latency.
+- A separate replay used the exact packaged server, real local speech recognition, real Sol, HTTP interruption handling and the actual renderer in a simulated DOM. Three spoken questions arrived 250 ms apart after recognition. The latest answer retained the added operational constraints, an acknowledgement left it unchanged, and a subsequent question used the candidate's actual spoken metric. The first readable opening arrived about 2.4 seconds after the last supplied transcript. This does not certify physical microphone or Mac loopback capture.
+- The fast cue path keeps the old card until a complete opening line is ready, then appends finished lines from the same generation. It does not race a cheap answer against a second rewrite. A rewritten opening is treated as an error and restores the previous card. Pause and question-audio guards remain active.
+- Hidden preparation is bounded to one request and reused only when the final question, physical utterance identity and surrounding speech still match. Changed questions or new speech invalidate it. It can consume additional model quota when a preview is discarded. It is not a sub-second guarantee.
+- Sol and Luna comparisons, supported-effort inspection and a live tier probe did not establish a reliable sub-second useful answer on the current Codex connection. The connection did not expose Ultrafast. A transport-only warm-up experiment was slower and was not adopted. The selected route remains Sol Fast with low effort.
+- The installed 1.33.3 modules matched source hashes. Public source and extracted runtime secret scans, the blank seed audit, package checksums and deep/strict ad-hoc signature passed. Private accounts, context and model caches were retained.
+- Native recording access was refreshed for the installed build. Automated native audio starts stalled, including an independent microphone attempt; a direct user-click check remains pending. Physical audio observations below are historical 1.33.2 results and do not certify 1.33.3.
+
+The latency target of a useful answer under one second was not met on the selected connection. Shared microphone speaker attribution and AI answer quality remain bounded by audio and model limitations.
+
+## Earlier 1.33.2 checks
 
 Checked on 27 October 2026.
 

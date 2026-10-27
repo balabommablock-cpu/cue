@@ -35,6 +35,14 @@ export function completedText(response) {
   return (response?.output || []).flatMap(item=>item.content || []).filter(x=>x.type==='text'||x.type==='output_text').map(x=>x.text || '').join('\n');
 }
 
+// A finished opening line, not a token or a guessed sentence boundary. Wait
+// for the newline so streamed decimals and abbreviations cannot commit early.
+export function completedOpening(raw){
+  const text=parseResponse(raw).answer,newline=text.indexOf('\n');if(newline<0)return '';
+  const first=text.slice(0,newline).trim(),count=first.split(/\s+/).length;
+  return first.length<=200&&(count>=5||count>=3&&/\d/.test(first))&&!/^(?:[#{\[```]|[-•])/u.test(first)?first:'';
+}
+
 // The inline turn check may decline a background comment. Do not wrap its
 // WAIT sentinel in ANSWER, including while that sentinel is still streaming.
 export function formatSuggestion(text,autoDetect=false){

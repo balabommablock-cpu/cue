@@ -22,7 +22,7 @@ export class ConversationLedger{
   const existing=key&&this.items.findIndex(item=>item.key===key);
   if(typeof existing==='number'&&existing>=0){const prior=this.items[existing];if(provisional&&speaker==='unknown'&&prior.speaker!=='unknown')speaker=prior.speaker;const head=provisional?(prior.head||prior.text.slice(0,700)):undefined;if(provisional&&!text.startsWith(head)&&!head.startsWith(text))text=head+'\n[Later speech excerpt]\n'+text.slice(-1200);this.items[existing]={speaker,text,at,key,source,provisional,head};return;}
   const last=this.items.at(-1);
-  if(!provisional&&!last?.provisional&&last?.speaker===speaker&&at>=last.at&&at-last.at<6000&&last.text.length+text.length<1600){
+  if(!key&&!last?.key&&!provisional&&!last?.provisional&&last?.speaker===speaker&&at>=last.at&&at-last.at<6000&&last.text.length+text.length<1600){
    if(last.text===text)return;
    last.text+='\n'+text;last.at=at;last.key=undefined;
   }else this.items.push({speaker,text,at,key,source,provisional});
