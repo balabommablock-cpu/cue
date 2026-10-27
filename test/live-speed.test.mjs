@@ -30,7 +30,7 @@ test('a pause inside a question preserves its beginning without answering an inc
  const j=new QuestionJoiner();assert.equal(j.accept('How did you deal with',{at:0,speechEndedAt:0}).waiting,true);
  assert.deepEqual(j.accept('the stakeholder disagreement?',{at:900,speechEndedAt:800}),{waiting:false,question:'How did you deal with the stakeholder disagreement?',speechEndedAt:800});
  assert.equal(j.accept('Why?',{at:1000}).waiting,false);j.accept('Can you tell me about the',{at:1100});assert.equal(j.accept('What happened next?',{at:1500}).question,'What happened next?');
- j.accept('How did you deal with',{at:1600});assert.equal(j.accept('a completely separate fragment',{at:7000}).question,'a completely separate fragment');
+ j.accept('How did you deal with',{at:1600});assert.equal(j.accept('a completely separate fragment',{at:33000}).question,'a completely separate fragment');
 });
 test('question context is retained during model delay and a failure restores the earlier context',async t=>{
  const stream=channel(),a=await renderer({fetch:url=>url==='/api/answer'?stream.response:undefined});t.after(()=>a.close());await a.run('connect()');a.run('raw="ANSWER: Previous.";render();$("question").textContent="Previous question?"');

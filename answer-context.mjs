@@ -1,4 +1,5 @@
 import {knowledgeText} from './knowledge.mjs';
+import {validateConversation,SPOKEN_CONTEXT_RULES} from './public/conversation.js';
 
 const normalise=q=>String(q||'').trim().toLowerCase().replace(/^please\s+/,'').replace(/^(can|could|would|will) you (please )?(?=define|explain|compare|tell me|solve|calculate|translate|write|rewrite|draft|debug|summari[sz]e|derive|list|outline|design)/,'');
 const refersBack=q=>/^(and |but |why\??$|why not\b|how so\b|how about\b|what if\b|what about\b|tell me more\b|what happened next\b|then\b)|\b(that|those|it|them|instead|again|the previous|the earlier|your proposed|your suggestion|your answer)\b/.test(q);
@@ -27,7 +28,7 @@ export function questionMode(question='',history=[]){
  return 'general';
 }
 
-export function answerContext({question,history=[],profile='',knowledge={records:[]},now=new Date(),autoDetect=false}){
+export function answerContext({question,history=[],conversation=[],profile='',knowledge={records:[]},now=new Date(),autoDetect=false}){
  const mode=questionMode(question,history),personal=mode==='personal',q=normalise(question);
  const today=now.toISOString().slice(0,10);
  // A fresh question gets no previous generated script. Follow-ups keep a small
@@ -42,10 +43,10 @@ export function answerContext({question,history=[],profile='',knowledge={records
   if(r.kind==='application'||r.kind==='reference')return asksSubmission;
   return r.kind==='fact'||r.kind==='record';
  });
- return {mode,today,history:recent,profile:personal?profile:'',knowledge:{...knowledge,records}};
+ return {mode,today,history:recent,conversation:validateConversation(conversation),profile:personal?profile:'',knowledge:{...knowledge,records}};
 }
-export function answerPrompt({question,history=[],profile='',knowledge,mode='general',today=new Date().toISOString().slice(0,10),autoDetect=false,inputSource}){
+export function answerPrompt({question,history=[],conversation=[],profile='',knowledge,mode='general',today=new Date().toISOString().slice(0,10),autoDetect=false,inputSource}){
  const reference=profile?'\n\nCAREER FACTS (only for personal claims):\n'+profile:'';
  const source=inputSource==='shared'?'shared room microphone; either person may be speaking':inputSource==='mic'?'candidate microphone':inputSource==='system'?'computer or interviewer audio':'mixed audio';
- return `CURRENT TASK: ${autoDetect?'Decide whether the transcript contains a new question or task, then answer it.':'Answer the question or complete the requested text task directly.'}\nDate: ${today}. No live web access.\n${autoDetect?'LATEST TRANSCRIPT ('+source+')':'CURRENT QUESTION OR TASK'}:\n${question}${history.length?'\n\nRECENT CONVERSATION (generated answers are not biographical evidence):\n'+JSON.stringify(history):''}\n\nCONTEXT SELECTION: ${mode}. Use general knowledge and independent reasoning. Answer this question on its own merits.${reference}${knowledgeText(knowledge)}\n\nGive the requested answer, language and format. No unrelated personal story.`;
+ return `CURRENT TASK: ${autoDetect?'Decide whether the transcript contains a new question or task, then answer it.':'Answer the question or complete the requested text task directly.'}\nDate: ${today}. No live web access.\n${autoDetect?'LATEST TRANSCRIPT ('+source+')':'CURRENT QUESTION OR TASK'}:\n${question}${conversation.length?'\n\n'+SPOKEN_CONTEXT_RULES+'\nLIVE CONVERSATION:\n'+JSON.stringify(conversation):''}${history.length?'\n\nRECENT SUGGESTIONS (not proof the candidate spoke these words):\n'+JSON.stringify(history):''}\n\nCONTEXT SELECTION: ${mode}. Use general knowledge and independent reasoning. Answer this question on its own merits.${reference}${knowledgeText(knowledge)}\n\nGive the requested answer, language and format. No unrelated personal story.`;
 }

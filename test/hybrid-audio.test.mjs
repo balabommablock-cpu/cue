@@ -61,3 +61,20 @@ test('hybrid setup persists and shows two correctly labelled meters',async t=>{
  const a=await renderer();t.after(()=>a.close());a.el('quickAudio').value='hybrid';a.el('quickAudio').onchange();
  assert.equal(a.run('read("source")'),'hybrid');assert.equal(a.el('audioSource').value,'hybrid');assert.equal(a.el('dualSignals').hidden,false);assert.equal(a.el('micSourceLabel').textContent,'Room / phone');assert.equal(a.el('microphoneSetting').hidden,false);assert.match(a.el('audioHelp').textContent,/Hears questions from this Mac/);
 });
+
+
+test('spoken numbers and digits are the same cross-input question in either arrival order',async t=>{
+ const sent=[];const a=await setup(t,(url,init)=>{if(url==='/api/answer'){sent.push(JSON.parse(init.body));return reply();}});
+ hear(a,'Stop there. We have three weeks of cash, not six months. What changes now?','shared',{speechEndedAt:1000});await tick();
+ hear(a,'Stop there, we have 3 weeks of cash, not 6 months. What changes now?','system',{speechEndedAt:1050});await tick();
+ assert.equal(sent.length,1);
+ hear(a,'Stop there, we have 2 weeks of cash, not 6 months. What changes now?','system',{speechEndedAt:2000});await tick();assert.equal(sent.length,2);
+});
+
+test('overlapping room echo tolerates a filler but preserves an added request or a real correction',()=>{
+ const e=new CrossSourceEcho();e.accept('How would you decide what to promise and explain the decision to the founder?','system',1000);
+ assert.equal(e.accept('How would you decide what to promise and explain your decision to the founder?','shared',1100,{overlappedSystem:true}),false);
+ assert.equal(e.accept('How would you decide what to promise and explain the decision to the founder and the operations team?','shared',1200,{overlappedSystem:true}),true);
+ assert.equal(e.accept('How would you decide what not to promise and explain the decision to the founder?','shared',1300,{overlappedSystem:true}),true);
+ assert.equal(e.accept('I would decide what to promise and explain the decision to the founder.','shared',1400,{overlappedSystem:true}),true);
+});

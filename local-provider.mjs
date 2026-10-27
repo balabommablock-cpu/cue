@@ -69,11 +69,11 @@ export async function prepareLocal(options={},signal){
 export async function transcribePCM(pcm,signal,{lane='question'}={}){
   signal?.throwIfAborted();return (await decoder(lane)).transcribe(pcm,signal);
 }
-export async function answerWithCodex({question,profile,style,history=[],autoDetect=false,inputSource,sessionKey,knowledge,answerModel,answerSpeed},emit,signal){
+export async function answerWithCodex({question,profile,style,history=[],conversation=[],autoDetect=false,inputSource,sessionKey,knowledge,answerModel,answerSpeed},emit,signal){
   if(!codexPath)throw new Error('Codex is not installed.');
   signal?.throwIfAborted();
   owner=sessionKey;const options=await writingOptions({profile,style,autoDetect,sessionKey,answerModel,answerSpeed});
-  const context=answerContext({question,profile,history,knowledge,autoDetect});
+  const context=answerContext({question,profile,history,conversation,knowledge,autoDetect});
   const prompt=answerPrompt({...context,question,autoDetect,inputSource});
   emit({type:'context',mode:context.mode,records:context.knowledge.records.length,historyTurns:context.history.length});
   return writer.run({...options,prompt,signal,emit,allowWait:autoDetect,allowUnframed:true,firstTextMs:8000,totalTimeoutMs:20000});

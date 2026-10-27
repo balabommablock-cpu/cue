@@ -70,7 +70,7 @@ export function createRuntime({progress=()=>{},brainFactory=p=>new LocalBrain(p)
           const profile={...EMPTY_PROFILE,facts:String(data.profile||'').slice(0,20000),documents,style:data.style==='script'?'paragraph':'cues'};
           if(String(data.profile||'').length>20000&&documents.length<24)profile.documents.push({id:'additional-profile',title:'More personal context',text:String(data.profile).slice(20000,40000)});
           const history=(data.history||[]).filter(h=>!/^WAIT:/.test(h.answer)).map(h=>({...h,answer:h.answer.replace(/^ANSWER:\s*/, '')}));
-          const messages=makeMessages(question.slice(0,2500),profile,history,data.autoDetect);let result='';
+          const messages=makeMessages(question.slice(0,2500),profile,history,data.autoDetect,data.conversation);let result='';
           emit({type:'stage',step:'draft',text:'Thinking on this Mac…'});
           await brain.answer(messages,raw=>{if(closed)return;result=visibleAnswer(raw);if(result.trim())emit({type:'answer',text:formatSuggestion(result,data.autoDetect),streaming:true});});
           if(!closed){if(!result.trim())throw new Error('No answer arrived. Retry the question.');emit({type:'answer',text:formatSuggestion(result,data.autoDetect),streaming:false});emit({type:'done'});}

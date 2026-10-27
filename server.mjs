@@ -9,12 +9,13 @@ import {localCapabilities,checkCodex,transcribePCM,answerWithCodex,prepareLocal,
 import {coachRequest,releaseCoach,validateInput} from './coaching.mjs';
 import {knowledge as defaultKnowledge,knowledgeText} from './knowledge.mjs';
 import {answerOptions} from './public/model-options.js';
+import {validateConversation} from './public/conversation.js';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const appVersion=JSON.parse(await readFile(new URL('./package.json',import.meta.url),'utf8')).version;
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
-  ...['api-setup-ui.js','api-ui.js','preferences-ui.js','setup-ui.js','account-ui.js','story-core.js','coach-ui.js','story-ui.js','voice-notes.js','background-ui.js','model-options.js','progress-ui.js','question-joiner.js'].map(name=>['/'+name,[name,'text/javascript; charset=utf-8']]),
+  ...['api-setup-ui.js','api-ui.js','preferences-ui.js','setup-ui.js','account-ui.js','story-core.js','coach-ui.js','story-ui.js','voice-notes.js','background-ui.js','model-options.js','progress-ui.js','question-joiner.js','conversation.js'].map(name=>['/'+name,[name,'text/javascript; charset=utf-8']]),
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/core.js', ['core.js', 'text/javascript; charset=utf-8']],
   ['/audio-capture.js', ['audio-capture.js', 'text/javascript; charset=utf-8']],
@@ -164,6 +165,7 @@ export function createApp({workspace=null,knowledge=defaultKnowledge,coach=coach
         if(question.length>4000)throw fail('Keep the question under 4,000 characters.');
         if(!question&&!validPCM(data.pcm))throw fail('A question or valid audio is required.');
         if(data.history!==undefined&&(!Array.isArray(data.history)||data.history.length>6||data.history.some(x=>!x||typeof x.question!=='string'||typeof x.answer!=='string'||x.question.length>4000||x.answer.length>6000)))throw fail('Conversation context is too large.');
+        try{data.conversation=validateConversation(data.conversation);}catch(e){throw fail(e.message);}
         if(!question&&client.transcribing)throw fail('Speech recognition is busy. Try again in a moment.',429);
         if(client.busy)throw fail('An answer is already in progress. Please wait.',429);
         client.busy=true;const controller=new AbortController();

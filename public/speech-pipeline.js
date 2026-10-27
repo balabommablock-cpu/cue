@@ -20,7 +20,8 @@ export async function transcribeRequest(pcm,signal,{fetcher=fetch,wait=delay,lan
   }
 }
 export class SpeechPipeline {
-  constructor({transcribe,onTranscript,onError=()=>{},onState=()=>{},parallel=false}){Object.assign(this,{transcribe,onTranscript,onError,onState});this.queue=[];this.busy=false;this.epoch=0;this.closed=false;this.cache=new Map();if(parallel)this.lanes=[new SpeechPipeline({transcribe,onTranscript,onError,onState}),new SpeechPipeline({transcribe,onTranscript,onError,onState})];}
+  constructor({transcribe,onTranscript,onError=()=>{},onState=()=>{},onIdle=()=>{},parallel=false}){Object.assign(this,{transcribe,onTranscript,onError,onState,onIdle});this.queue=[];this.busy=false;this.epoch=0;this.closed=false;this.cache=new Map();if(parallel)this.lanes=[new SpeechPipeline({transcribe,onTranscript,onError,onState,onIdle}),new SpeechPipeline({transcribe,onTranscript,onError,onState,onIdle})];}
+  hasPendingQuestionSpeech(){return this.lanes?this.lanes.some(lane=>lane.hasPendingQuestionSpeech()):[this.activeItem,...this.queue].some(item=>item&&(item.source==='system'||item.source==='shared'&&(item.final||item.endpoint)));}
   push(item){
     if(this.closed)return;
     if(this.lanes){this.lanes[item.source==='system'?0:1].push(item);return;}
@@ -58,7 +59,7 @@ export class SpeechPipeline {
       }
     }
     catch(e){if(!this.closed&&epoch===this.epoch&&e.name!=='AbortError')this.onError(e);}
-    finally{this.busy=false;this.activeItem=null;this.controller=null;void this.drain();}
+    finally{this.busy=false;this.activeItem=null;this.controller=null;void this.drain();if(!this.closed&&epoch===this.epoch)this.onIdle();}
   }
   clear(){this.epoch++;this.queue=[];this.cache.clear();this.controller?.abort();this.lanes?.forEach(lane=>lane.clear());}
   stop(){this.closed=true;this.clear();this.lanes?.forEach(lane=>lane.stop());}

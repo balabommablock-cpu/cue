@@ -27,8 +27,13 @@ export function matchReading(answer,heard,cursor=0){
   return {...best,total:script.length,offset:script[Math.min(best.wordIndex,script.length-1)]?.start||0};
 }
 
+export function spokenTokens(text){
+  const small={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+  const tokens=words(text).map(t=>t.word),out=[];
+  for(let i=0;i<tokens.length;i++){const n=small[tokens[i]];if(n>=20&&small[tokens[i+1]]>0&&small[tokens[i+1]]<10)out.push(String(n+small[tokens[++i]]));else out.push(n===undefined?tokens[i]:String(n));}return out;
+}
 export function sameUtterance(a,b){
-  const left=words(a).map(t=>t.word),right=words(b).map(t=>t.word);
+  const left=spokenTokens(a),right=spokenTokens(b);
   if(!left.length||!right.length)return false;
   // A single changed word, number, negation or word order can change the task.
   // Prefer a duplicate request over silently discarding a different question.
@@ -47,6 +52,7 @@ export function explicitQuestion(text){
 export function sharedMicIntent(text,{answer='',cursor=0,turnOpen=false}={}){
   const clean=text.trim().replaceAll('’',"'").replace(/^(?:(?:ok(?:ay)?|so|well|right|um|uh)[,.]?\s+)+/i,'');
   if(turnRoute({text:clean,source:'shared'})==='ack')return 'ack';
+  if(/^(?:(?:no|sorry|actually)[,.]?\s+)*I (?:mean|meant|am asking)\b/i.test(clean))return turnOpen?'question':'unknown';
   const self=/^(?:(?:and|but)\s+)?(?:I\b|I've\b|I'm\b|I'd\b|I'll\b|we\b|we've\b|we're\b|my\b|our\b|for me\b|in my\b|what I\b|how I\b|why I\b|the (?:result|reason|decision) was\b)/i.test(clean);
   // Requests in a candidate's quotation or self-question are not new prompts.
   if(!self&&(explicitQuestion(clean)||/^(?:why not|what else|anything else|your role|the result)[?.!]*$/i.test(clean)||/^(?:you (?:said|mentioned|wrote)\b.+[?.!]\s*)?(?:tell|show|give|walk) me\b/i.test(clean)))return 'question';
@@ -62,7 +68,7 @@ export function sharedMicIntent(text,{answer='',cursor=0,turnOpen=false}={}){
 export function turnRoute({text,source,hasAnswer,forced=false,dual=false}){
   if(forced)return 'answer';
   const clean=words(text).map(t=>t.word).join(' ');
-  if(/^(?:(?:thank you(?: very much)?|thanks(?: a lot)?|okay|ok|yes|yeah|no|sure|right|absolutely|great|good|got it|understood|that makes sense|bye|goodbye|mm hmm|uh huh)(?:\s+|$))+$/.test(clean))return 'ack';
+  if(/^(?:(?:thank you(?: very much)?|thanks(?: a lot)?|okay|ok|yes|yeah|no|sure|right|absolutely|great|good|got it|understood|i see|fair enough|sounds good|makes sense|that makes sense|bye|goodbye|mm hmm|uh huh)(?:\s+|$))+$/.test(clean))return 'ack';
   // In this two-input product the microphone belongs to the candidate. Keep
   // their normal response as context rather than asking a model to rewrite it.
   if(source==='mic'&&dual)return 'context';
@@ -81,7 +87,7 @@ export function interviewerRequest(text){
 // A candidate saying "actually" is never an interviewer cancellation.
 export function questionReplacement(text,source){
   if(source!=='system')return null;
-  const match=text.trim().match(/^(?:actually[,;:]?\s+)?(?:forget that(?: question)?|scratch that|let me rephrase(?: that)?)(?=$|[\s.,;:!?—–-])[.,;:!?—–-]*\s*(.*)$/i);
+  const match=text.trim().match(/^(?:actually[,;:]?\s+)?(?:forget that(?: question)?|scratch that|let me rephrase(?: that)?|(?:a )?different question|next question|(?:let['’]s|let us) (?:move on|switch topics)|on (?:a )?different topic)(?=$|[\s.,;:!?—–-])[.,;:!?—–-]*\s*(.*)$/i);
   if(!match)return null;
   return {question:match[1].trim()};
 }

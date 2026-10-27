@@ -1,4 +1,17 @@
-# Cue 1.33.1 validation
+# Cue 1.33.2 validation
+
+Checked on 27 October 2026.
+
+- 492 automated checks passed with no failures or skips. Conversation regressions cover long pauses, unfinished scenario setup, multipart questions, backchannels, real candidate speech, provisional speech during interruptions, interviewer corrections, explicit topic changes, stale completed drafts, and overlapping microphone/computer transcripts.
+- Actual spoken turns now travel separately from generated suggestions in every text-provider path. The in-memory conversation ledger is bounded and cleared on Stop/session change; it is not saved as biography or confirmed fact. Requests include at most eight selected speech entries and 8,000 characters.
+- A full software voice replay used real local MLX Whisper, real Sol Fast requests, the renderer and its actual stream decoder. The scenario preface made no answer request; the candidate’s own response kept the existing answer; the next answer defended that stated choice; an interruption changed the cash constraint from six months to three weeks. Three answer requests completed. In the final repeat, first provider text took 1.6–3.2 seconds and completion 3.6–6.1 seconds. ASR for those fixture clips took about 0.1–0.3 seconds warm. This is a software/audio-fixture test, not a full hardware latency benchmark.
+- Physical combined capture on the 1.33.2 candidate registered Mac loopback at 0.862 and the Brio room microphone at 0.073 during sustained Mac speaker playback. The native reader waited for a paused case question, retained the previous card while a follow-up drafted, and updated the answer for a three-week cash interruption, without showing thinking text. This test also exposed duplicate cross-input transcripts; the final correction has regression coverage for spoken numbers versus digits, both arrival orders, fuzzy room echoes, genuine added requests and changed negations.
+- The final installed build also passed a physical shared-microphone replay: case preface held, complete question answered, candidate speech left the answer unchanged, and the follow-up explicitly retained the candidate’s stated unchanged-price choice. The previous card stayed visible during drafting and no thinking text appeared. This uses synthetic spoken clips through Mac speakers into the Brio microphone, not independent simultaneous human speakers.
+- Public source and extracted installed-runtime secret scans passed. The installed conversation modules matched source hashes. The DMG checksum and deep/strict ad-hoc signature were checked. Private account/context/cache remain local and are not included in packages.
+
+Shared-microphone speaker attribution is based on language and context, not biometric speaker identification. Background speech, poor audio and simultaneous voices can still be misheard. No sub-second or perfect conversational-understanding guarantee is made. The Mac preview remains ad-hoc signed and is not Apple notarized.
+
+## Earlier 1.33.1 checks
 
 Checked on 27 October 2026. These are bounded engineering observations, not a latency or device guarantee.
 

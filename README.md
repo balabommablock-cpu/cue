@@ -35,7 +35,7 @@ To update, quit Cue and replace it in Applications with the new download. Your o
 
 Cue normally keeps your data in `~/Library/Application Support/Cue`. An early Community-only installation continues using its existing `Cue Community` folder when no main Cue folder exists. Data is never copied from the developer’s computer into a release. Global launcher setup is optional: see [development](docs/DEVELOPMENT.md).
 
-An answer starts with the useful point and short cues. The first answer streams; a follow-up replaces it only after the replacement is complete. Brief acknowledgements and your own answer do not rewrite the cue card. The reader omits thinking commentary.
+An answer starts with the useful point and short cues. The first answer streams; a follow-up replaces it only after the replacement is complete. Brief acknowledgements and your own answer do not rewrite the cue card. The reader omits thinking commentary. Paused scenario setup stays attached to the question, and follow-ups use what you actually said separately from earlier AI suggestions. The session speech context is bounded and cleared on Stop; it is not added to your saved biography. A shared room microphone uses language-based turn attribution and can still misread overlapping or background speech.
 
 ## AI choices
 
